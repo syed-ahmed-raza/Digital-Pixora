@@ -12,4 +12,4 @@ Disallow: /_next/
 Disallow: /admin/
 
 # Google ko batana ke hamari site ka naksha (Sitemap) kahan hai
-Sitemap: https://digitalpixora.com/sitemap.xml
+Sitemap:https://digital-pixora.vercel.app/sitemap.xml
