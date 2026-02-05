@@ -1,0 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 0.8%;  /* #020202 */
+    --foreground: 0 0% 100%;
+    --brand-primary: 356 92% 47%; /* #E50914 - Digital Pixora Red */
+  }
+
+  html {
+    @apply h-full w-full;
+    /* ⚡ LENIS COMPATIBILITY: Native smooth scroll band rehna chahiye */
+    scroll-behavior: auto !important; 
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-[hsl(var(--background))] text-[hsl(var(--foreground))] min-h-screen w-full;
+    /* ✨ TEXT POLISH: Crystal clear rendering */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+  }
+
+  /* 🎨 LUXURY SELECTION: Glowing red highlight */
+  ::selection {
+    @apply bg-[hsl(var(--brand-primary))] text-white;
+    text-shadow: 0 0 12px rgba(229, 9, 20, 0.5);
+  }
+
+  /* 🖱️ CUSTOM LUXURY SCROLLBAR (Minimalist) */
+  /* Chrome, Safari, and Edge */
+  ::-webkit-scrollbar {
+    width: 5px; /* Patla aur sleek */
+    display: block !important;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent; /* Clean look ke liye track invisible rakha hai */
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(181, 24, 24, 0.1); 
+    border-radius: 100px;
+    transition: all 0.4s ease-in-out;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--brand-primary)); 
+    box-shadow: 0 0 15px rgba(119, 6, 11, 0.6);
+  }
+
+  /* Firefox Support */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(149, 30, 30, 0.588) transparent;
+  }
+}
+
+@layer utilities {
+  /* Utility to hide scrollbar when needed */
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  
+  /* 🚀 GPU FORCE: Buttery smooth animations for high-end feel */
+  .gpu-accelerate {
+    transform: translate3d(0, 0, 0); 
+    will-change: transform, opacity;
+    backface-visibility: hidden;
+    perspective: 1000px;
+    -webkit-backface-visibility: hidden;
+  }
+}
+
+/* 🌊 LENIS SMOOTH SCROLL OPTIMIZATIONS */
+html.lenis, html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+/* Video/Iframe optimization during scroll */
+.lenis.lenis-scrolling iframe {
+  pointer-events: none; 
+}

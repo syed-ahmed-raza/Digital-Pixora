@@ -1,0 +1,15 @@
+# --- 🤖 DIGITAL PIXORA ROBOTS PROTOCOL ---
+
+# User-agent: * ka matlab hai ke saare search engines (Google, Bing, etc.)
+User-agent: *
+
+# In raaston par bots ko jaane ki ijazat hai
+Allow: /
+
+# In raaston ko bots scan nahi karenge (Privacy & Performance)
+Disallow: /api/
+Disallow: /_next/
+Disallow: /admin/
+
+# Google ko batana ke hamari site ka naksha (Sitemap) kahan hai
+Sitemap: https://digitalpixora.com/sitemap.xml
