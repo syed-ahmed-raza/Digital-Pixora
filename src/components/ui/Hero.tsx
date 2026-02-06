@@ -3,6 +3,7 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import { motion, useScroll, useTransform, useSpring, useMotionValue, Variants } from "framer-motion";
 import { ArrowUpRight, ArrowRight } from "lucide-react";
+import { BackgroundBeams } from "./BackgroundBeams";
 
 // --- ANIMATION VARIANTS (Optimized) ---
 const containerVariants: Variants = {
@@ -10,7 +11,7 @@ const containerVariants: Variants = {
   visible: {
     opacity: 1,
     transition: {
-      delayChildren: 0.2, // Thoda delay taake page load stabilize ho jaye
+      delayChildren: 0.2, 
       staggerChildren: 0.15
     }
   }
@@ -28,7 +29,7 @@ const itemVariants: Variants = {
 // --- 1. SCRAMBLE TEXT (Hydration Safe) ---
 const ScrambleText = ({ text }: { text: string }) => {
     const [display, setDisplay] = useState(text);
-    const [mounted, setMounted] = useState(false); // Fix hydration mismatch
+    const [mounted, setMounted] = useState(false); 
     const chars = "!@#$%^&*()_+~`|{}[]:;?><,./-=";
 
     useEffect(() => {
@@ -41,7 +42,6 @@ const ScrambleText = ({ text }: { text: string }) => {
         let iteration = 0;
         let interval: NodeJS.Timeout;
 
-        // Mobile par thoda fast khatam ho taake user bore na ho
         const isMobile = window.innerWidth < 768; 
         const speed = isMobile ? 50 : 30; 
 
@@ -109,7 +109,7 @@ const MagneticButton = ({ children, onClick, className }: any) => {
 
 export default function Hero() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [isMobile, setIsMobile] = useState(true); // Default true prevents hydration flicker
+  const [isMobile, setIsMobile] = useState(true);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 1024);
@@ -139,7 +139,7 @@ export default function Hero() {
   const xSpring = useSpring(mouseX, springConfig);
   const ySpring = useSpring(mouseY, springConfig);
   
-  const rotateX = useTransform(ySpring, [-0.5, 0.5], [5, -5]); // Thoda subtle kiya (7 se 5)
+  const rotateX = useTransform(ySpring, [-0.5, 0.5], [5, -5]); 
   const rotateY = useTransform(xSpring, [-0.5, 0.5], [-5, 5]);
   const textX = useTransform(xSpring, [-0.5, 0.5], [-15, 15]);
 
@@ -157,19 +157,18 @@ export default function Hero() {
         id="home"
         ref={containerRef}
         onMouseMove={handleMouseMove}
-        // 🛠️ FIX: min-h-[100dvh] ensures full height on mobile browsers (Safari address bar fix)
         className="relative min-h-[100dvh] flex flex-col justify-center items-center px-4 sm:px-6 md:px-10 pt-10 pb-4 overflow-hidden bg-transparent"
         style={{ perspective: isMobile ? "none" : "1200px" }}
     >
-      
+      <BackgroundBeams/>
+   
       {/* --- BACKGROUND ATMOSPHERE --- */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
           <div 
              className={`
                 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 
                 w-[80vw] h-[80vw] md:w-[50vw] md:h-[50vw] 
-                bg-gradient-to-tr from-[#682a2d] to-purple-900 
-                opacity-[0.12] md:opacity-[0.18] 
+                md:opacity-[0.18] 
                 rounded-full pointer-events-none 
                 will-change-transform
                 ${isMobile ? "blur-[50px]" : "blur-[90px] animate-blob"} 

@@ -14,7 +14,6 @@ export default function Navbar() {
   // --- 1. INTELLIGENT SCROLL ---
   useEffect(() => {
     const handleScroll = () => {
-       // Thoda margin badhaya taake jitter na ho
        setIsScrolled(window.scrollY > 20);
     };
     
@@ -80,7 +79,6 @@ export default function Navbar() {
 
   return (
     <>
-      {/* 🛠️ FIX: Navbar Z-Index boosted to 100 to stay ABOVE the mobile menu */}
       <motion.nav
         initial={{ y: -100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
@@ -105,7 +103,7 @@ export default function Navbar() {
             initial={false}
             animate={{
                 width: isMobile 
-                    ? "100%" // Mobile: Full width but with padding from parent
+                    ? "100%" 
                     : (showFullNav ? "100%" : "64px"),
                 height: "64px",
                 borderRadius: "50px",
@@ -142,7 +140,7 @@ export default function Navbar() {
                             className="flex items-center justify-center"
                         >
                             <span className="text-xl font-black tracking-tighter text-white">DP</span>
-                            {/* 🔥 Red Dot Pulse */}
+                            {/* Red Dot Pulse */}
                             <div className="relative flex items-center justify-center ml-0.5 mt-1.5">
                                 <span className="absolute inline-flex h-full w-full rounded-full bg-[#E50914] opacity-75 animate-ping"></span>
                                 <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#E50914]"></span>
@@ -169,7 +167,7 @@ export default function Navbar() {
                                 <span className="relative z-10 text-[11px] font-bold uppercase tracking-[0.2em] text-white/60 group-hover:text-white transition-colors">
                                     {link.name}
                                 </span>
-                                <span className="absolute bottom-0 left-0 w-full h-[1px] bg-[#E50914] -translate-x-full group-hover:translate-x-0 transition-transform duration-300 ease-out" />
+                               <span className="absolute bottom-1 left-0 w-full h-[1px] bg-[#E50914] scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out origin-left" />
                             </div>
                         </Link>
                         ))}

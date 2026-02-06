@@ -32,7 +32,6 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     const checkScreen = () => setIsDesktop(window.innerWidth > 1024);
     checkScreen();
     
-    // Performance Optimized Resize Listener
     let resizeTimer: NodeJS.Timeout;
     const handleResize = () => {
         clearTimeout(resizeTimer);
@@ -40,6 +39,8 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     };
     
     window.addEventListener("resize", handleResize);
+    
+    // Prevent browser seeking to previous scroll position on reload
     if (typeof window !== "undefined" && 'scrollRestoration' in history) {
       history.scrollRestoration = 'manual';
     }
@@ -61,20 +62,18 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     return () => gsap.ticker.remove(update);
   }, []);
 
-  // --- 3. PRELOADER & SCROLL LOGIC (THE FIX) ---
+  // --- 3. PRELOADER & SCROLL LOGIC ---
   useEffect(() => {
     if (isLoading) {
       document.body.style.overflow = "hidden";
-      // Lenis Stop (Optional but safer)
       if (lenisRef.current?.lenis) lenisRef.current.lenis.stop();
     } else {
       document.body.style.overflow = "";
       window.scrollTo(0, 0);
       
-      // Lenis Start & Refresh
       if (lenisRef.current?.lenis) lenisRef.current.lenis.start();
 
-      // 🔥 CRITICAL: Force Refresh after Layout Shift
+      // Force Refresh after Layout Shift to ensure Sticky elements work
       setTimeout(() => {
         lenisRef.current?.lenis?.resize();
         ScrollTrigger.refresh();
@@ -88,12 +87,27 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       root 
       autoRaf={false} 
       options={{ 
-        lerp: isDesktop ? 0.06 : 0.08, // Adjusted for smoother feel
-        duration: 1.2, 
+        // 💎 ULTRA-PREMIUM SCROLL SETTINGS 💎
+        
+        // 1. Smoothness (Lower = Heavy/Creamy, Higher = Snappy)
+        lerp: 0.07, 
+        
+        // 2. Duration: Kitni dair tak scroll momentum rahega
+        duration: 1.5, 
+        
+        // 3. Wheel (Desktop Mouse)
         smoothWheel: true,
-        touchMultiplier: isDesktop ? 1.5 : 2, // Mobile scroll fast kiya
-        wheelMultiplier: 1, 
+        wheelMultiplier: 0.9, // Thoda sa weight diya taake fast na bhage
+        
+        // 4. 🔥 MOBILE FIX (Most Important)
+        // Pehle '2' tha, isliye tez tha. '0.65' se finger movement controlled feel hogi.
+        touchMultiplier: isDesktop ? 1 : 0.65, 
+        
+        // 5. Mobile Smoothness Force Enable
         syncTouch: true,
+        
+        // 6. Infinite Scroll Disable
+        infinite: false,
       }}
     >
       
@@ -131,7 +145,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         {/* Global Notifications */}
         <Toaster 
             position="bottom-center" 
-            containerStyle={{ zIndex: 99999 }} // Ensure it's always on top
+            containerStyle={{ zIndex: 99999 }} 
             toastOptions={{
                 className: 'backdrop-blur-xl border border-white/10 shadow-2xl',
                 style: {
