@@ -30,19 +30,43 @@ export default function NotFound() {
   const textX = useTransform(xSpring, [-0.5, 0.5], [40, -40]);
   const textY = useTransform(ySpring, [-0.5, 0.5], [40, -40]);
 
+  const triggerHaptic = () => {
+    if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(10);
+  };
+
   return (
     <div 
         ref={containerRef}
         onMouseMove={handleMouseMove}
-        // h-[100dvh] ensures it fits mobile browsers perfectly (address bar fix)
+        
         className="h-[100dvh] w-full bg-[#020202] flex flex-col items-center justify-center text-center px-4 relative overflow-hidden cursor-default selection:bg-[#E50914] selection:text-white"
     >
+      <style jsx global>{`
+        @keyframes scanline {
+          0% { transform: translateY(-100%); opacity: 0; }
+          50% { opacity: 1; }
+          100% { transform: translateY(1000%); opacity: 0; }
+        }
+        .scanline-404 {
+          width: 100%; height: 100px;
+          background: linear-gradient(to bottom, transparent, rgba(229, 9, 20, 0.1), transparent);
+          animation: scanline 8s ease-in-out infinite;
+          position: absolute;
+          top: 0;
+          left: 0;
+          pointer-events: none;
+          z-index: 20;
+        }
+      `}</style>
+
+      {/* --- 1. ATMOSPHERE LAYERS --- */}
+      <div className="scanline-404" />
       
-      {/* --- 1. BACKGROUND NOISE & GLOW --- */}
-      <div className="absolute inset-0 opacity-[0.04] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')] z-50 mix-blend-overlay"></div>
+      {/* Noise Overlay */}
+      <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')] z-30 mix-blend-overlay"></div>
       
-      {/* Red Atmosphere Spot */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] h-[60vw] bg-[#E50914] opacity-[0.05] blur-[100px] md:blur-[150px] rounded-full pointer-events-none"></div>
+      {/* Red Glow Spot */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] h-[60vw] bg-[#E50914] opacity-[0.04] blur-[100px] md:blur-[150px] rounded-full pointer-events-none z-0"></div>
 
       {/* --- 2. GIANT PARALLAX 404 (Background Layer) --- */}
       <motion.h1 
@@ -54,12 +78,13 @@ export default function NotFound() {
       </motion.h1>
       
       {/* --- 3. MAIN CONTENT (Foreground) --- */}
-      <div className="relative z-10 flex flex-col items-center max-w-[90%] md:max-w-2xl">
+      <div className="relative z-40 flex flex-col items-center max-w-[90%] md:max-w-2xl">
         
         {/* Status Badge */}
         <motion.div 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
             className="mb-6 flex items-center gap-2 px-3 py-1 bg-[#E50914]/10 border border-[#E50914]/20 rounded-lg backdrop-blur-md"
         >
             <AlertTriangle className="w-3 h-3 text-[#E50914]" />
@@ -73,8 +98,8 @@ export default function NotFound() {
             animate={{ 
                 x: [-1, 2, -1, 0],
                 textShadow: [
-                    "2px 0px 0px rgba(255,0,0,0.5), -2px 0px 0px rgba(0,255,255,0.5)",
-                    "0px 0px 0px rgba(255,0,0,0.5), 0px 0px 0px rgba(0,255,255,0.5)"
+                    "2px 0px 0px rgba(229,9,20,0.5), -2px 0px 0px rgba(0,255,255,0.3)",
+                    "0px 0px 0px rgba(229,9,20,0.5), 0px 0px 0px rgba(0,255,255,0.3)"
                 ]
             }}
             transition={{ duration: 0.2, repeat: Infinity, repeatDelay: 3 }}
@@ -92,7 +117,7 @@ export default function NotFound() {
         </p>
         
         {/* --- PREMIUM BUTTON (Return to Base) --- */}
-        <Link href="/">
+        <Link href="/" onClick={triggerHaptic}>
             <button className="group relative px-10 py-4 rounded-full bg-white text-black font-black uppercase tracking-widest text-[11px] overflow-hidden transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(255,255,255,0.3)]">
                 <span className="relative z-10 flex items-center gap-2 group-hover:text-[#E50914] transition-colors duration-300">
                     <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" /> Return to Base
@@ -105,7 +130,7 @@ export default function NotFound() {
 
       {/* --- 4. TERMINAL FOOTER DECORATION --- */}
       {/* Hidden on small mobile to avoid clutter */}
-      <div className="absolute bottom-8 w-full px-8 hidden md:flex justify-between items-end opacity-30 pointer-events-none">
+      <div className="absolute bottom-8 w-full px-8 hidden md:flex justify-between items-end opacity-30 pointer-events-none z-30">
           <div className="flex items-center gap-4 text-[10px] font-mono text-white tracking-widest uppercase">
               <Terminal className="w-3 h-3" />
               <span>Initializing Reboot Sequence...</span>

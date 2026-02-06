@@ -1,18 +1,48 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence, useMotionTemplate, useMotionValue } from "framer-motion";
-import { Send, Globe, Signal, Copy, Terminal, AlertCircle, CheckCircle2, XCircle, Clock, Wifi, WifiOff } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Send, Globe, Signal, Copy, Terminal, CheckCircle2, XCircle, Clock, Radio, MapPin } from "lucide-react";
 import { sendEmail } from "@/actions/email"; 
 import toast from "react-hot-toast";
 
-// --- CUSTOM PARTS ---
+// --- CUSTOM PARTS (Make sure these paths are correct) ---
 import PixoraBot from "./contact/PixoraBot";
 import SmartInput from "./contact/SmartInput";
 import HoldSubmitBtn from "./contact/HoldSubmitBtn";
 
-// --- 1. PREMIUM TOAST (Optimized) ---
+// --- 🔊 SONIC UI ENGINE (Sound Effects) ---
+const playSound = (type: 'success' | 'error' | 'click') => {
+  if (typeof window === 'undefined') return;
+  try {
+    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    
+    if (type === 'success') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(600, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1000, ctx.currentTime + 0.1);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.5);
+    } else if (type === 'click') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(800, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.1);
+    }
+  } catch(e) {}
+};
+
+// --- 1. PREMIUM TOAST ---
 const showPremiumToast = (message: string, type: "success" | "error" | "copy") => {
+  playSound(type === 'error' ? 'error' : 'success');
   toast.custom((t) => (
     <motion.div
       initial={{ opacity: 0, y: 20, scale: 0.95 }}
@@ -32,33 +62,7 @@ const showPremiumToast = (message: string, type: "success" | "error" | "copy") =
   ), { duration: 4000, position: "bottom-center" });
 };
 
-// --- 2. SPOTLIGHT CARD (GPU Optimized) ---
-const SpotlightCard = ({ children, className = "", onClick }: any) => {
-    const mouseX = useMotionValue(0);
-    const mouseY = useMotionValue(0);
-
-    function handleMouseMove({ currentTarget, clientX, clientY }: React.MouseEvent) {
-        const { left, top } = currentTarget.getBoundingClientRect();
-        mouseX.set(clientX - left);
-        mouseY.set(clientY - top);
-    }
-
-    return (
-        <div 
-            onClick={onClick} 
-            className={`group relative border border-white/10 bg-[#0A0A0A] overflow-hidden ${className}`} 
-            onMouseMove={handleMouseMove}
-        >
-            <motion.div 
-                className="pointer-events-none absolute -inset-px opacity-0 transition duration-300 group-hover:opacity-100 will-change-[opacity]" 
-                style={{ background: useMotionTemplate`radial-gradient(500px circle at ${mouseX}px ${mouseY}px, rgba(229, 9, 20, 0.1), transparent 80%)` }} 
-            />
-            <div className="relative h-full z-10">{children}</div>
-        </div>
-    );
-};
-
-// --- 3. TERMINAL SUCCESS (Hydration Safe) ---
+// --- 2. TERMINAL SUCCESS SCREEN ---
 const TerminalSuccess = ({ onReset }: { onReset: () => void }) => {
     const [ticketId, setTicketId] = useState("GENERATING...");
     
@@ -72,22 +76,17 @@ const TerminalSuccess = ({ onReset }: { onReset: () => void }) => {
             animate={{ opacity: 1, scale: 1 }} 
             className="w-full bg-[#080808] border border-white/10 rounded-[2rem] p-6 md:p-12 relative overflow-hidden flex flex-col items-center justify-center min-h-[500px]"
         >
-            {/* Ambient Background */}
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#E50914] to-transparent opacity-50" />
-            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 pointer-events-none" />
+            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.05] pointer-events-none" />
 
-            {/* The Digital Ticket */}
             <motion.div 
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.2, type: "spring" }}
                 className="relative w-full max-w-sm bg-[#0f0f0f] border border-white/10 rounded-xl overflow-hidden shadow-2xl"
             >
-                {/* Top Green Bar */}
                 <div className="h-1 w-full bg-green-500" />
-                
                 <div className="p-6 md:p-8 space-y-6">
-                    {/* Status Header */}
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
@@ -100,10 +99,7 @@ const TerminalSuccess = ({ onReset }: { onReset: () => void }) => {
                         </div>
                         <Signal className="w-4 h-4 text-green-500 animate-pulse" />
                     </div>
-
                     <div className="h-px w-full bg-white/10" />
-
-                    {/* Details Grid */}
                     <div className="grid grid-cols-2 gap-4 font-mono text-xs">
                         <div>
                             <p className="text-white/30 text-[9px] uppercase tracking-widest mb-1">Ticket ID</p>
@@ -113,35 +109,10 @@ const TerminalSuccess = ({ onReset }: { onReset: () => void }) => {
                             <p className="text-white/30 text-[9px] uppercase tracking-widest mb-1">Status</p>
                             <p className="text-green-500 font-bold">RECEIVED</p>
                         </div>
-                         <div>
-                            <p className="text-white/30 text-[9px] uppercase tracking-widest mb-1">Sector</p>
-                            <p className="text-white font-bold">HQ DATABASE</p> 
-                        </div>
-                         <div className="text-right">
-                            <p className="text-white/30 text-[9px] uppercase tracking-widest mb-1">Encryption</p>
-                            <p className="text-white font-bold">AES-256</p>
-                        </div>
-                    </div>
-
-                    {/* Animated Barcode */}
-                    <div className="bg-white/5 p-3 rounded-lg border border-white/5 flex flex-col items-center gap-2">
-                         <div className="flex justify-between items-end gap-[3px] h-6 w-full opacity-50">
-                             {[...Array(25)].map((_, i) => (
-                                 <motion.div 
-                                    key={i} 
-                                    initial={{ height: "20%" }} 
-                                    animate={{ height: ["20%", "100%", "20%"] }} 
-                                    transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.05 }}
-                                    className="w-1 bg-white" 
-                                 />
-                             ))}
-                         </div>
-                         <p className="text-[9px] font-mono text-white/30 tracking-[0.5em]">{ticketId.replace('DPX-', '')}</p>
                     </div>
                 </div>
             </motion.div>
 
-            {/* Reset Button */}
             <button onClick={onReset} className="mt-8 text-[10px] font-bold text-white/30 hover:text-white uppercase tracking-[0.2em] transition-colors flex items-center gap-2 group">
                 <Terminal className="w-3 h-3 group-hover:text-[#E50914] transition-colors" />
                 Initialize New Session
@@ -157,44 +128,51 @@ export default function Contact() {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error" | "listening">("idle");
   const [mood, setMood] = useState<"neutral" | "happy" | "angry" | "focused">("neutral");
   const [copied, setCopied] = useState(false);
+  const [focusedField, setFocusedField] = useState<string | null>(null); 
   
   // Hydration Safe States
-  const [userLocation, setUserLocation] = useState("SCANNING...");
+  const [userLocation, setUserLocation] = useState("CALIBRATING...");
   const [time, setTime] = useState("--:--");
+  const [ping, setPing] = useState(24);
   const [isOnline, setIsOnline] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
 
-  // 1. LIVE ENVIRONMENT FETCH
+  // 1. LIVE ENVIRONMENT FETCH (CORS FIXED)
   useEffect(() => {
     setIsMounted(true);
     
-    // Initial Network Check (Client Side Only)
     if (typeof navigator !== "undefined") {
         setIsOnline(navigator.onLine);
     }
 
-    // Time Logic
     const timer = setInterval(() => {
-        setTime(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
+        setTime(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+        setPing(prev => Math.max(12, Math.min(60, prev + Math.floor(Math.random() * 10) - 5)));
     }, 1000);
 
-    // Network Logic
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
     
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Location Logic
-    fetch("/api/location")
-        .then(res => res.json())
-        .then(data => {
-            if(data.city) setUserLocation(data.city.toUpperCase());
-            else throw new Error("IP Failed");
-        })
-        .catch(() => {
-            setUserLocation("UNKNOWN SECTOR");
-        });
+    // 🔥 FIX: No more external API calls causing CORS errors.
+    // We use the browser's native Timezone to guess location accurately.
+    const detectLocation = () => {
+        try {
+            const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            if (timeZone) {
+                // e.g. "Asia/Karachi" -> "KARACHI, PK" (Simulated)
+                const city = timeZone.split('/')[1]?.replace('_', ' ').toUpperCase();
+                setUserLocation(city || "UNKNOWN SECTOR");
+            } else {
+                setUserLocation("UNKNOWN SECTOR");
+            }
+        } catch (e) {
+            setUserLocation("OFF-GRID");
+        }
+    };
+    detectLocation();
 
     return () => {
         clearInterval(timer);
@@ -203,7 +181,7 @@ export default function Contact() {
     };
   }, []);
 
-  // 2. CHECK FORM VALIDITY
+  // 2. FORM LOGIC
   const isFormValid = 
       formData.name.trim().length > 0 && 
       /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email) && 
@@ -217,8 +195,12 @@ export default function Contact() {
     return () => clearTimeout(timeout);
   }, []);
 
+  const handleFocus = (name: string) => setFocusedField(name);
+  const handleBlurField = () => setFocusedField(null);
+
   const handleBlur = useCallback((e: any) => {
       const { name, value } = e.target;
+      handleBlurField();
       if (name === "email") {
           const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
           if (!isValid && value.length > 0) {
@@ -272,12 +254,12 @@ export default function Contact() {
   const handleCopyEmail = () => {
       navigator.clipboard.writeText("hellodigitalpixora@gmail.com");
       setCopied(true);
-      if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(50); // Haptic
-      showPremiumToast("Coordinates Copied", "copy");
+      playSound('click');
+      if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(50); 
+      showPremiumToast("Encrypted Coordinates Copied", "copy");
       setTimeout(() => setCopied(false), 2000);
   };
 
-  // Prevent Hydration Flash
   if (!isMounted) return null;
 
   return (
@@ -301,86 +283,118 @@ export default function Contact() {
              </h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-12 lg:gap-20 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-12 lg:gap-16 items-start">
             
-            {/* LEFT: FORM */}
+            {/* --- LEFT: INPUT TERMINAL --- */}
             <div className="md:col-span-7 w-full relative">
                 
-                {/* 🤖 ROBOT */}
-                <div className="absolute -top-18 right-0 md:-top-28 md:-right-4 z-30 pointer-events-none">
-                     <PixoraBot status={status} mood={mood} />
+                {/* 🤖 THE BOT GUARDIAN */}
+                <div className="absolute -top-24 right-0 md:-top-32 md:-right-8 z-30 pointer-events-none">
+                      <PixoraBot status={status} mood={mood} focusedField={focusedField} />
                 </div>
 
                 <AnimatePresence mode="wait">
                     {status === "success" ? (
                         <TerminalSuccess key="success" onReset={() => { setStatus("idle"); setFormData({name:"",email:"",brief:""}) }} />
                     ) : (
-                        <motion.div key="form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, x: -20 }} className="bg-white/[0.02] border border-white/5 p-6 md:p-8 rounded-[2rem] backdrop-blur-sm relative z-10">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div onBlur={handleBlur}><SmartInput name="name" label="Identity / Name" value={formData.name} onChange={handleChange} error={errors.name} /></div>
-                                <div onBlur={handleBlur}><SmartInput name="email" label="Digital Coordinates (Email)" value={formData.email} onChange={handleChange} error={errors.email} /></div>
+                        <motion.div key="form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, x: -20 }} className="bg-white/[0.02] border border-white/5 p-6 md:p-10 rounded-[2rem] backdrop-blur-sm relative z-10 shadow-2xl">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div onFocus={() => handleFocus("name")} onBlur={handleBlur}>
+                                    <SmartInput name="name" label="Identity / Name" value={formData.name} onChange={handleChange} error={errors.name} />
+                                </div>
+                                <div onFocus={() => handleFocus("email")} onBlur={handleBlur}>
+                                    <SmartInput name="email" label="Digital Coordinates (Email)" value={formData.email} onChange={handleChange} error={errors.email} />
+                                </div>
                             </div>
-                            <div onBlur={handleBlur}>
+                            <div onFocus={() => handleFocus("brief")} onBlur={handleBlur} className="mt-8">
                                 <SmartInput type="textarea" name="brief" label="Mission Brief (Or use Voice)" value={formData.brief} onChange={handleChange} error={errors.brief} enableVoice={true} onVoiceResult={handleVoiceInput} />
                             </div>
                             
-                            {/* 🔥 HOLD BUTTON */}
-                            <HoldSubmitBtn 
-                                onClick={handleHoldSubmit} 
-                                loading={status === "loading"} 
-                                disabled={!isFormValid} 
-                            />
+                            <div className="mt-10">
+                                <HoldSubmitBtn onClick={handleHoldSubmit} loading={status === "loading"} disabled={!isFormValid} />
+                            </div>
                         </motion.div>
                     )}
                 </AnimatePresence>
             </div>
 
-            {/* RIGHT: INFO DASHBOARD */}
-            <div className="md:col-span-5 flex flex-col gap-6 w-full">
+            {/* --- RIGHT: BENTO GRID DASHBOARD --- */}
+            <div className="md:col-span-5 flex flex-col gap-4 w-full h-full">
                 
-                {/* Email Card */}
-                <SpotlightCard onClick={handleCopyEmail} className="rounded-[2rem] p-8 cursor-pointer group active:scale-[0.98] transition-transform">
-                    <div className="relative z-10 h-full flex flex-col justify-between">
-                         <div className="flex justify-between items-start mb-12">
-                            <div className="p-4 bg-white/5 border border-white/10 rounded-2xl text-white group-hover:bg-[#E50914] group-hover:border-[#E50914] transition-colors duration-500"><Send className="w-6 h-6" /></div>
-                            <div className={`px-3 py-1 border rounded-full text-[9px] font-bold uppercase tracking-widest transition-all duration-300 ${copied ? "bg-green-500 border-green-500 text-black" : "bg-white/5 border-white/10 text-white/50"}`}>{copied ? "COPIED" : "TAP TO COPY"}</div>
-                         </div>
-                         <div><span className="text-[#E50914] text-[10px] font-black uppercase tracking-widest mb-2 block">Direct Frequency</span><h3 className="text-xl md:text-3xl font-bold text-white break-words">hellodigitalpixora<br/>@gmail.com</h3></div>
+                {/* 1. HOLOGRAPHIC EMAIL STRIP */}
+                <div onClick={handleCopyEmail} className="group relative w-full h-24 bg-[#0A0A0A] border border-white/10 rounded-2xl overflow-hidden cursor-pointer hover:border-[#E50914]/50 transition-all duration-500 shadow-lg">
+                    {/* Signal Bars Animation */}
+                    <div className="absolute right-6 top-1/2 -translate-y-1/2 flex gap-1 items-end h-6">
+                        {[1,2,3,4].map(i => (
+                            <motion.div key={i} animate={{ height: [4, 16, 8] }} transition={{ repeat: Infinity, duration: 0.8, delay: i * 0.1 }} className="w-1 bg-[#E50914] rounded-full opacity-50" />
+                        ))}
                     </div>
-                </SpotlightCard>
-
-                <div className="grid grid-cols-2 gap-4">
-                    {/* 🌍 REAL LOCATION CARD */}
-                    <SpotlightCard className="rounded-3xl p-6 min-h-[160px]">
-                        <div className="relative z-10 h-full flex flex-col justify-between">
-                            <div className="flex justify-between items-start">
-                                <Globe className="w-6 h-6 text-white/30" />
-                                <div className="flex items-center gap-1.5 px-2 py-1 bg-white/5 rounded-full border border-white/10">
-                                    <Clock className="w-3 h-3 text-[#E50914]" />
-                                    <span className="text-[9px] font-mono text-white/70">{time}</span>
-                                </div>
-                            </div>
-                            <div>
-                                <span className="block text-[9px] font-black text-white/30 uppercase tracking-widest mb-1">Your Sector</span>
-                                <span className="text-white font-bold">{userLocation}</span>
+                    
+                    <div className="relative z-10 flex items-center h-full px-6 gap-4">
+                        <div className={`p-3 rounded-full transition-colors ${copied ? 'bg-green-500 text-black' : 'bg-white/5 text-white group-hover:bg-[#E50914]'}`}>
+                            {copied ? <CheckCircle2 className="w-5 h-5" /> : <Send className="w-5 h-5" />}
+                        </div>
+                        <div className="overflow-hidden w-full">
+                            <span className="text-[10px] text-white/40 uppercase tracking-widest font-mono block mb-1">Encrypted Uplink</span>
+                            <div className="relative w-full overflow-hidden">
+                                <p className="text-lg md:text-xl font-bold text-white whitespace-nowrap group-hover:animate-marquee">
+                                    hellodigitalpixora@gmail.com
+                                </p>
                             </div>
                         </div>
-                    </SpotlightCard>
-
-                    {/* 📶 NETWORK STATUS CARD */}
-                    <SpotlightCard className="rounded-3xl p-6 min-h-[160px]">
-                        <div className="relative z-10 h-full flex flex-col justify-between">
-                            {isOnline ? <Wifi className="w-6 h-6 text-green-500 animate-pulse" /> : <WifiOff className="w-6 h-6 text-red-500" />}
-                            <div>
-                                <span className="block text-[9px] font-black text-white/30 uppercase tracking-widest mb-1">Network</span>
-                                <span className={`font-bold ${isOnline ? "text-white" : "text-red-500"}`}>{isOnline ? "Operational" : "Offline"}</span>
-                            </div>
-                        </div>
-                    </SpotlightCard>
+                    </div>
                 </div>
+
+                <div className="grid grid-cols-2 gap-4 h-full">
+                    {/* 2. RADAR LOCATION */}
+                    <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-5 flex flex-col justify-between relative overflow-hidden group">
+                        {/* Radar Animation */}
+                        <div className="absolute -right-4 -top-4 w-24 h-24 border border-white/5 rounded-full flex items-center justify-center opacity-50">
+                             <div className="w-full h-full border-t border-[#E50914] rounded-full animate-spin" />
+                        </div>
+                        
+                        <MapPin className="w-6 h-6 text-white/30 mb-4 group-hover:text-[#E50914] transition-colors" />
+                        <div>
+                            <span className="text-[9px] text-white/40 uppercase tracking-widest font-mono block mb-1">Sector</span>
+                            <span className="text-sm font-bold text-white leading-tight block">{userLocation}</span>
+                        </div>
+                    </div>
+
+                    {/* 3. SYSTEM STATUS */}
+                    <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-5 flex flex-col justify-between">
+                        <div className="flex justify-between items-start">
+                            <Radio className={`w-6 h-6 ${isOnline ? "text-green-500 animate-pulse" : "text-red-500"}`} />
+                            <span className="text-[9px] font-mono text-white/40">{ping}ms</span>
+                        </div>
+                        <div>
+                            <span className="text-[9px] text-white/40 uppercase tracking-widest font-mono block mb-1">System</span>
+                            <span className="text-sm font-bold text-white leading-tight block">{isOnline ? "ONLINE" : "OFFLINE"}</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* 4. TIME MODULE */}
+                <div className="w-full bg-[#0A0A0A] border border-white/10 rounded-2xl p-5 flex items-center justify-between">
+                      <div>
+                        <span className="text-[9px] text-white/40 uppercase tracking-widest font-mono block mb-1">Local Time</span>
+                        <span className="text-xl font-bold text-white font-mono">{time}</span>
+                      </div>
+                      <Clock className="w-6 h-6 text-white/20" />
+                </div>
+
             </div>
         </div>
       </div>
+
+      <style jsx>{`
+        @keyframes marquee {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-10%); }
+        }
+        .group:hover .group-hover\:animate-marquee {
+            animation: marquee 2s linear infinite alternate;
+        }
+      `}</style>
     </section>
   );
 }

@@ -1,12 +1,20 @@
 import { MetadataRoute } from 'next'
 
 export default function robots(): MetadataRoute.Robots {
+
+  const baseUrl = 'https://digitalpixora.com'; 
+
   return {
     rules: {
       userAgent: '*',
       allow: '/',
-      disallow: '/private/', // Jo pages aap hide rakhna chahte hain
+      disallow: [
+        '/private/', 
+        '/api/',      
+        '/_next/',    
+        '/admin/'     
+      ],
     },
-    sitemap: 'https://digital-pixora.vercel.app/sitemap.xml',
+    sitemap: `${baseUrl}/sitemap.xml`,
   }
 }

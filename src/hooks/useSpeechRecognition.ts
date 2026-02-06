@@ -61,10 +61,20 @@ export const useSpeechRecognition = (): SpeechRecognitionState => {
   // --- 4. AUDIO VISUALIZER (Natural VAD) ---
   const startAudioAnalysis = async () => {
     try {
+      // Cleanup previous instances if any
+      stopAudioAnalysis();
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaStreamRef.current = stream;
       
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const AudioContextClass = (window.AudioContext || (window as any).webkitAudioContext);
+      const audioContext = new AudioContextClass();
+      
+      // Resume context if suspended (Chrome policy)
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+      }
+
       const analyser = audioContext.createAnalyser();
       const microphone = audioContext.createMediaStreamSource(stream);
       const scriptProcessor = audioContext.createScriptProcessor(2048, 1, 1);
@@ -88,6 +98,7 @@ export const useSpeechRecognition = (): SpeechRecognitionState => {
         // Smoother scaling for visualizer
         const normalizedVal = Math.min(100, Math.round((rms / 100) * 100)); 
         
+        // Noise Gate (Below 5 is silence)
         const squelchedVal = normalizedVal < 5 ? 0 : normalizedVal;
         setAudioLevel(squelchedVal);
 
@@ -102,15 +113,18 @@ export const useSpeechRecognition = (): SpeechRecognitionState => {
       audioContextRef.current = audioContext;
     } catch (e) {
       console.warn("Audio analysis failed", e);
+      // Don't block speech recognition if visualizer fails
     }
   };
 
   const stopAudioAnalysis = () => {
-    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
-        audioContextRef.current.close();
+    if (audioContextRef.current) {
+        audioContextRef.current.close().catch(() => {});
+        audioContextRef.current = null;
     }
     if (mediaStreamRef.current) {
         mediaStreamRef.current.getTracks().forEach(track => track.stop());
+        mediaStreamRef.current = null;
     }
     setAudioLevel(0);
     setIsSpeaking(false);
@@ -158,7 +172,7 @@ export const useSpeechRecognition = (): SpeechRecognitionState => {
         
         // Voice Commands
         const clearCommands = ["delete all", "clear chat", "reset", "start over"];
-        const stopCommands = ["stop", "abort", "cancel", "pause"];
+        const stopCommands = ["stop listening", "abort", "cancel voice"];
 
         if (clearCommands.some(cmd => lowerText.includes(cmd))) {
             setTranscript("");
@@ -197,9 +211,9 @@ export const useSpeechRecognition = (): SpeechRecognitionState => {
     recognition.onerror = (event: any) => {
       if (event.error === "no-speech") return;
       if (event.error === "not-allowed") {
-          toast.error("Please allow microphone access to talk.", {
+          toast.error("Please allow microphone access.", {
              icon: '🎙️',
-             style: { background: '#000', color: '#fff', border: '1px solid #333' }
+             style: { background: '#000', color: '#fff', border: '1px solid #E50914' }
           });
           stopListening();
       }

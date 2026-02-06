@@ -8,20 +8,30 @@ const config: Config = {
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
+    // 🛠️ FIX 1: Responsive Container Padding
     container: {
       center: true,
-      padding: "2rem",
+      padding: {
+        DEFAULT: "1rem",   // Mobile: 16px (Content ko saans lene ki jagah milegi)
+        sm: "1.5rem",      // Large Mobile
+        md: "2rem",        // Tablet
+        lg: "3rem",        // Laptop
+        xl: "4rem",        // Desktop
+      },
       screens: {
         "2xl": "1400px",
-        "3xl": "1600px", 
       },
     },
     extend: {
+      // 🛠️ FIX 2: Global 3xl Breakpoint (Ab aap '3xl:text-9xl' use kar sakenge)
+      screens: {
+        "3xl": "1600px",
+      },
       colors: {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         brand: {
-          DEFAULT: "hsl(var(--brand-primary))",
+          DEFAULT: "hsl(var(--brand-primary))", // #E50914
           glow: "#ff1f2c",
           dark: "#b0060f",
         },
@@ -32,13 +42,11 @@ const config: Config = {
         }
       },
       
-      // ✅ FONT SYNC: Space Grotesk ko primary banaya
       fontFamily: {
         sans: ["var(--font-space)", "ui-sans-serif", "system-ui"],
         mono: ["var(--font-geist-mono)", "monospace"],
       },
 
-      // ✨ PREMIUM SHADOWS: Glow effects ke liye
       boxShadow: {
         'brand-glow': '0 0 20px rgba(229, 9, 20, 0.3)',
         'brand-glow-heavy': '0 0 40px rgba(229, 9, 20, 0.5)',
@@ -54,7 +62,6 @@ const config: Config = {
         "float": "float 6s ease-in-out infinite",
         "shimmer": "shimmer 2s linear infinite",
         "fade-in-up": "fade-in-up 0.8s cubic-bezier(0.19, 1, 0.22, 1) forwards",
-        // 🚀 Fast pulse for active states
         "pulse-fast": "pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite",
       },
       
@@ -73,7 +80,6 @@ const config: Config = {
         }
       },
       
-      // 🛠️ Z-INDEX SYSTEM: Layering ko asaan banane ke liye
       zIndex: {
         '60': '60',
         '70': '70',

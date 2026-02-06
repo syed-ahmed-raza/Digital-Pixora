@@ -17,7 +17,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 
 // Plugin Register
 if (typeof window !== "undefined") {
-    gsap.registerPlugin(ScrollTrigger);
+  gsap.registerPlugin(ScrollTrigger);
 }
 
 // --- DATA ---
@@ -74,8 +74,15 @@ const VideoCard = ({ video, index, onClick, scrollYProgress }: any) => {
             ([entry]) => {
                 setIsVisible(entry.isIntersecting);
                 if (videoRef.current) {
-                    if (entry.isIntersecting) videoRef.current.play().catch(() => {});
-                    else videoRef.current.pause();
+                    if (entry.isIntersecting) {
+                        // ⚡ FIX: Play promise handling for mobile browsers
+                        const playPromise = videoRef.current.play();
+                        if (playPromise !== undefined) {
+                            playPromise.catch(() => {});
+                        }
+                    } else {
+                        videoRef.current.pause();
+                    }
                 }
             },
             { threshold: 0.6 }
@@ -88,8 +95,10 @@ const VideoCard = ({ video, index, onClick, scrollYProgress }: any) => {
     // Desktop Hover Logic
     useEffect(() => {
         if (isDesktop && videoRef.current) {
-            if (isHovered) videoRef.current.play().catch(() => {});
-            else {
+            if (isHovered) {
+                const playPromise = videoRef.current.play();
+                if (playPromise !== undefined) playPromise.catch(() => {});
+            } else {
                 videoRef.current.pause();
                 videoRef.current.currentTime = 0;
             }
@@ -129,11 +138,10 @@ const VideoCard = ({ video, index, onClick, scrollYProgress }: any) => {
             ref={cardRef}
             style={{ y, skewY }} 
             onClick={onClick}
-            // ✅ FIX: 'setIsDesktop' (function) ki jagah 'isDesktop' (boolean) use kiya
             onMouseEnter={() => isDesktop && setIsHovered(true)}
             onMouseLeave={() => isDesktop && setIsHovered(false)}
             onMouseMove={handleMouseMove}
-            className="group relative w-full h-[50vh] md:h-[60vh] lg:h-[75vh] rounded-[2rem] overflow-hidden bg-[#0a0a0a] border border-white/5 cursor-none z-10 will-change-transform transform-gpu shadow-2xl"
+            className="group relative w-full h-[50vh] md:h-[60vh] lg:h-[75vh] rounded-[2rem] overflow-hidden bg-[#0a0a0a] border border-white/5 cursor-pointer lg:cursor-none z-10 will-change-transform transform-gpu shadow-2xl"
         >
             {/* Magnetic Play Button (Desktop) */}
             <div className="hidden lg:block">
@@ -183,6 +191,7 @@ const VideoCard = ({ video, index, onClick, scrollYProgress }: any) => {
                 ref={videoRef}
                 src={video.src} 
                 muted loop playsInline
+                preload="metadata" // ⚡ FIX: Preload only metadata to save bandwidth
                 className="absolute inset-0 w-full h-full object-cover scale-100 lg:scale-105 lg:group-hover:scale-110 transition-transform duration-[1.5s] ease-out grayscale lg:grayscale group-hover:grayscale-0 opacity-80 lg:opacity-60 group-hover:opacity-100"
             />
         </motion.div>
@@ -204,7 +213,8 @@ const ReelPlayer = ({ video, onClose }: { video: any, onClose: () => void }) => 
     const [showControls, setShowControls] = useState(true);
     const [showSkip, setShowSkip] = useState<'forward' | 'backward' | null>(null);
 
-    let controlsTimeout: NodeJS.Timeout;
+    // Timeout ref for controls
+    const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         setIsDesktop(window.innerWidth > 1024);
@@ -220,8 +230,9 @@ const ReelPlayer = ({ video, onClose }: { video: any, onClose: () => void }) => 
         return () => { 
             document.body.style.overflow = "auto";
             window.removeEventListener("keydown", handleKeyDown);
+            if(controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
         };
-    }, []);
+    }, [onClose]);
 
     const togglePlay = () => {
         if (videoRef.current) {
@@ -260,8 +271,8 @@ const ReelPlayer = ({ video, onClose }: { video: any, onClose: () => void }) => 
 
     const handleMouseMove = () => {
         setShowControls(true);
-        clearTimeout(controlsTimeout);
-        controlsTimeout = setTimeout(() => { if (isPlaying) setShowControls(false); }, 2500);
+        if(controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+        controlsTimeoutRef.current = setTimeout(() => { if (isPlaying) setShowControls(false); }, 2500);
     };
 
     const handleDoubleClick = (e: React.MouseEvent) => {
@@ -281,7 +292,7 @@ const ReelPlayer = ({ video, onClose }: { video: any, onClose: () => void }) => 
             {/* ⚡ AMBILIGHT (Desktop Only) */}
             {isDesktop && (
                 <div className="absolute inset-0 overflow-hidden opacity-30 pointer-events-none">
-                     <video src={video.src} autoPlay muted loop playsInline className="w-full h-full object-cover blur-[80px] scale-150" />
+                      <video src={video.src} autoPlay muted loop playsInline className="w-full h-full object-cover blur-[80px] scale-150" />
                 </div>
             )}
             
@@ -402,18 +413,17 @@ export default function MotionDesign() {
 
   useEffect(() => {
     // ⚡ LAYOUT STABILITY FIX
-    setTimeout(() => {
-        ScrollTrigger.refresh();
-    }, 500);
-
-    if(!textRef.current) return;
-    
-    // Simple GSAP Reveal for Text
     const ctx = gsap.context(() => {
-        gsap.fromTo(textRef.current!.querySelectorAll('.reveal-text'), 
-            { y: 100, opacity: 0 }, 
-            { y: 0, opacity: 1, duration: 1, stagger: 0.1, ease: "power3.out", scrollTrigger: { trigger: textRef.current, start: "top 85%" } }
-        );
+        setTimeout(() => {
+            ScrollTrigger.refresh();
+        }, 500);
+
+        if(textRef.current) {
+             gsap.fromTo(textRef.current.querySelectorAll('.reveal-text'), 
+                { y: 100, opacity: 0 }, 
+                { y: 0, opacity: 1, duration: 1, stagger: 0.1, ease: "power3.out", scrollTrigger: { trigger: textRef.current, start: "top 85%" } }
+            );
+        }
     }, container);
 
     return () => ctx.revert();

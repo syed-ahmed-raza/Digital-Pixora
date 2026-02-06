@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, MicOff, AlertCircle } from "lucide-react";
+import { Mic, AlertCircle, Waves, StopCircle } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface SmartInputProps {
@@ -16,7 +16,7 @@ interface SmartInputProps {
   onVoiceResult?: (text: string) => void;
 }
 
-// --- NATIVE SPEECH RECOGNITION (No Hook Needed) ---
+// --- NATIVE SPEECH RECOGNITION (Improved Hook) ---
 const useNativeSpeech = () => {
     const [isListening, setIsListening] = useState(false);
     const recognitionRef = useRef<any>(null);
@@ -26,7 +26,7 @@ const useNativeSpeech = () => {
             const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
             if (SpeechRecognition) {
                 recognitionRef.current = new SpeechRecognition();
-                recognitionRef.current.continuous = false;
+                recognitionRef.current.continuous = false; // Auto-stop after silence
                 recognitionRef.current.interimResults = false;
                 recognitionRef.current.lang = "en-US";
             }
@@ -39,26 +39,41 @@ const useNativeSpeech = () => {
             return;
         }
 
-        setIsListening(true);
-        recognitionRef.current.start();
+        try {
+            setIsListening(true);
+            recognitionRef.current.start();
 
-        recognitionRef.current.onresult = (event: any) => {
-            const transcript = event.results[0][0].transcript;
-            onResult(transcript);
-            setIsListening(false);
-        };
+            recognitionRef.current.onresult = (event: any) => {
+                const transcript = event.results[0][0].transcript;
+                onResult(transcript);
+                setIsListening(false);
+            };
 
-        recognitionRef.current.onerror = () => {
-            setIsListening(false);
-            toast.error("Voice input failed. Try again.");
-        };
+            recognitionRef.current.onerror = (event: any) => {
+                console.error("Speech Error:", event.error);
+                setIsListening(false);
+                if (event.error === 'not-allowed') {
+                    toast.error("Microphone access denied.");
+                }
+            };
 
-        recognitionRef.current.onend = () => {
+            recognitionRef.current.onend = () => {
+                setIsListening(false);
+            };
+        } catch (e) {
+            console.error("Mic start failed", e);
             setIsListening(false);
-        };
+        }
     };
 
-    return { isListening, startListening };
+    const stopListening = () => {
+        if (recognitionRef.current && isListening) {
+            recognitionRef.current.stop();
+            setIsListening(false);
+        }
+    };
+
+    return { isListening, startListening, stopListening };
 };
 
 export default function SmartInput({ 
@@ -72,21 +87,27 @@ export default function SmartInput({
   onVoiceResult 
 }: SmartInputProps) {
   const [isFocused, setIsFocused] = useState(false);
+  const inputId = useRef(`input-${Math.random().toString(36).substr(2, 9)}`).current;
   
-  // 🔥 FIX: Using Native Implementation instead of external hook
-  const { isListening, startListening } = useNativeSpeech();
+  // 🔥 UPDATED: Toggle Logic added
+  const { isListening, startListening, stopListening } = useNativeSpeech();
 
   const handleMicClick = (e: React.MouseEvent) => {
       e.stopPropagation();
       if (!onVoiceResult) return;
 
-      startListening((text) => {
-          onVoiceResult(text);
-          toast.success("Voice Captured", {
-            style: { background: "#0A0A0A", color: "#fff", border: "1px solid #22c55e" },
-            icon: "🎙️",
+      if (isListening) {
+          stopListening();
+          toast("Listening Paused", { icon: "⏸️", style: { background: "#333", color: "#fff" }});
+      } else {
+          startListening((text) => {
+              onVoiceResult(text);
+              toast.success("Voice Captured", {
+                style: { background: "#0A0A0A", color: "#fff", border: "1px solid #22c55e" },
+                icon: "🎙️",
+              });
           });
-      });
+      }
   };
 
   return (
@@ -106,7 +127,7 @@ export default function SmartInput({
             className={`absolute bottom-0 left-0 h-[2px] z-30 ${error ? 'bg-red-500' : 'bg-[#E50914]'}`}
         />
 
-        {/* Listening Mode Visualization (Waveform) */}
+        {/* Listening Mode Visualization (Organic Waveform) */}
         <AnimatePresence>
             {isListening && (
                 <motion.div 
@@ -115,13 +136,13 @@ export default function SmartInput({
                     exit={{ opacity: 0 }} 
                     className="absolute inset-0 bg-red-500/5 z-0 flex items-center justify-center pointer-events-none"
                 >
-                    <div className="flex gap-1 items-end h-6">
-                        {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <div className="flex gap-1 items-center h-8">
+                        {[1, 2, 3, 4, 5].map((i) => (
                             <motion.div 
                                 key={i}
-                                animate={{ height: [5, 20, 5] }}
-                                transition={{ duration: 0.4, repeat: Infinity, delay: i * 0.1, ease: "easeInOut" }}
-                                className="w-1 bg-[#E50914] rounded-full"
+                                animate={{ height: [4, 16 + Math.random() * 12, 4] }}
+                                transition={{ duration: 0.5, repeat: Infinity, delay: i * 0.1, ease: "easeInOut" }}
+                                className="w-1 bg-[#E50914] rounded-full opacity-80"
                             />
                         ))}
                     </div>
@@ -129,8 +150,10 @@ export default function SmartInput({
             )}
         </AnimatePresence>
 
-        {/* Label Animation */}
-        <label className={`absolute left-5 transition-all duration-300 pointer-events-none z-10 ${
+        {/* Floating Label */}
+        <label 
+            htmlFor={inputId}
+            className={`absolute left-5 transition-all duration-300 pointer-events-none z-10 ${
             isFocused || value 
             ? "top-3 text-[9px] text-[#E50914] font-black uppercase tracking-[0.2em]" 
             : "top-5 text-sm text-white/40 font-medium group-hover:text-white/60"
@@ -144,17 +167,18 @@ export default function SmartInput({
                 type="button" 
                 onClick={handleMicClick}
                 className={`absolute top-3 right-3 p-2 rounded-full transition-all z-50 cursor-pointer hover:bg-white/10 active:scale-95 ${
-                    isListening ? 'bg-red-500/20 text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.4)]' : 'text-white/30 hover:text-white'
+                    isListening ? 'bg-red-500/20 text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.4)] animate-pulse' : 'text-white/30 hover:text-white'
                 }`}
-                title="Use Voice Input"
+                title={isListening ? "Stop Listening" : "Use Voice Input"}
             >
-                {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+                {isListening ? <StopCircle className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
             </button>
         )}
 
         {/* Input Fields */}
         {type === "textarea" ? (
             <textarea 
+                id={inputId}
                 name={name}
                 value={value}
                 onChange={onChange}
@@ -166,6 +190,7 @@ export default function SmartInput({
             />
         ) : (
             <input 
+                id={inputId}
                 type={type}
                 name={name}
                 value={value}
@@ -178,13 +203,13 @@ export default function SmartInput({
         )}
       </motion.div>
       
-      {/* Error Message */}
+      {/* Error Message (Shake Effect) */}
       <AnimatePresence>
         {error && (
             <motion.div 
-                initial={{ opacity: 0, y: -5 }} 
-                animate={{ opacity: 1, y: 0 }} 
-                exit={{ opacity: 0, y: -5 }}
+                initial={{ opacity: 0, x: -10 }} 
+                animate={{ opacity: 1, x: 0 }} 
+                exit={{ opacity: 0, x: -10 }}
                 className="absolute -bottom-6 left-1 flex items-center gap-1.5"
             >
                 <AlertCircle className="w-3 h-3 text-red-500" />

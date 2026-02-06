@@ -58,7 +58,7 @@ const MasterCard = ({ project, index }: { project: any, index: number }) => {
     const x = useMotionValue(0);
     const y = useMotionValue(0);
     
-    // Physics thora soft kiya taake GPU spike na aye
+    // Physics optimized for 60FPS
     const mouseX = useSpring(x, { stiffness: 120, damping: 25 });
     const mouseY = useSpring(y, { stiffness: 120, damping: 25 });
 
@@ -68,7 +68,7 @@ const MasterCard = ({ project, index }: { project: any, index: number }) => {
         y.set(clientY - top);
     }
 
-    const spotlight = useMotionTemplate`radial-gradient(600px circle at ${mouseX}px ${mouseY}px, rgba(255,255,255,0.06), transparent 80%)`;
+    const spotlight = useMotionTemplate`radial-gradient(600px circle at ${mouseX}px ${mouseY}px, rgba(255,255,255,0.08), transparent 80%)`;
 
     return (
         <div 
@@ -84,13 +84,13 @@ const MasterCard = ({ project, index }: { project: any, index: number }) => {
                     src={project.src} 
                     alt={project.title} 
                     priority={index === 0}
-                    // Blur scale ko thora kam kiya performance ke liye
-                    className="object-cover opacity-50 group-hover:opacity-80 group-hover:scale-105 transition-all duration-[1.2s] ease-out grayscale group-hover:grayscale-0 will-change-transform"
+                    quality={90} // 🔥 Ensure crisp quality on big screens
+                    className="object-cover opacity-60 group-hover:opacity-80 group-hover:scale-105 transition-all duration-[1.2s] ease-out grayscale group-hover:grayscale-0 will-change-transform"
                 />
             </div>
 
             {/* 2. GRADIENT OVERLAY */}
-            <div className="absolute inset-0 z-10 bg-gradient-to-t from-black via-black/50 to-transparent opacity-90 pointer-events-none" />
+            <div className="absolute inset-0 z-10 bg-gradient-to-t from-black via-black/40 to-transparent opacity-90 pointer-events-none" />
 
             {/* 3. SPOTLIGHT (Mouse Tracking) */}
             <motion.div 
@@ -101,17 +101,17 @@ const MasterCard = ({ project, index }: { project: any, index: number }) => {
             {/* --- TOP BAR --- */}
             <div className="absolute top-6 left-6 right-6 md:top-10 md:left-10 md:right-10 z-30 flex justify-between items-start">
                 <div className="flex items-center gap-3">
-                      <span className="text-[10px] md:text-xs font-mono text-white/30 tracking-widest flex items-center gap-2">
+                      <span className="text-[10px] md:text-xs font-mono text-white/40 tracking-widest flex items-center gap-2">
                           <Hash className="w-3 h-3"/> 0{index + 1}
                       </span>
-                      <span className="px-3 py-1.5 rounded-full border border-white/10 bg-black/50 text-[10px] md:text-xs text-white/80 font-bold uppercase tracking-widest backdrop-blur-md">
+                      <span className="px-3 py-1.5 rounded-full border border-white/10 bg-black/50 text-[10px] md:text-xs text-white/90 font-bold uppercase tracking-widest backdrop-blur-md">
                           {project.category}
                       </span>
                 </div>
                 
                 <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/5 bg-black/50 backdrop-blur-md">
-                    <Cpu className="w-3 h-3 text-white/40" />
-                    <span className="text-[10px] text-white/50 font-mono">{project.tech}</span>
+                    <Cpu className="w-3 h-3 text-white/50" />
+                    <span className="text-[10px] text-white/60 font-mono">{project.tech}</span>
                 </div>
             </div>
 
@@ -129,7 +129,7 @@ const MasterCard = ({ project, index }: { project: any, index: number }) => {
                     </div>
 
                     <div className="flex flex-col items-start md:items-end gap-4 text-left md:text-right w-full md:w-auto">
-                        <p className="text-white/60 text-sm md:text-base max-w-sm font-light leading-relaxed hidden md:block">
+                        <p className="text-white/70 text-sm md:text-base max-w-sm font-light leading-relaxed hidden md:block">
                             {project.description}
                         </p>
                         <a href={project.link} target="_blank" className="relative overflow-hidden flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-white hover:text-white transition-colors group/link px-6 py-3 border border-white/10 rounded-full bg-white/5 backdrop-blur-sm hover:border-[#E50914] cursor-pointer">
@@ -149,14 +149,16 @@ export default function WebDevelopment() {
   const cardsRef = useRef<HTMLDivElement[]>([]);
   
   useLayoutEffect(() => {
-    // ⚡ LAZY LOAD FIX: Refresh ScrollTrigger after a tiny delay to ensure height is correct
-    setTimeout(() => {
-        ScrollTrigger.refresh();
-    }, 500);
+    // ⚡ Safe Refresh
+    const ctx = gsap.context(() => {
+        setTimeout(() => {
+            ScrollTrigger.refresh();
+        }, 500);
+    });
 
     const mm = gsap.matchMedia();
     
-    // --- SMART ANIMATION: Only on Desktop (Performance Saver) ---
+    // --- DESKTOP ANIMATION (STACKING) ---
     mm.add("(min-width: 1024px)", () => {
         const cards = cardsRef.current;
         if (!cards.length) return;
@@ -183,22 +185,23 @@ export default function WebDevelopment() {
                 tl.to(card, { 
                     yPercent: -50, 
                     duration: 1, 
-                    ease: "power2.out" // Thora smooth kiya 'none' se
+                    ease: "power2.out" 
                 });
                 
-                // Previous Card Fade & Scale
+                // Previous Card Scale & Fade
                 tl.to(cards[i - 1], { 
                     scale: 0.92, 
                     opacity: 0, 
-                    // ⚡ PERFORMANCE FIX: Heavy Blur removed. Opacity is enough for depth.
-                    // filter: "blur(10px)", // Removed to save GPU
                     duration: 1 
                 }, "<"); 
             }
         });
     });
 
-    return () => mm.revert();
+    return () => {
+        ctx.revert();
+        mm.revert();
+    };
   }, []);
 
   return (
@@ -218,7 +221,6 @@ export default function WebDevelopment() {
       </div>
 
       {/* --- DESKTOP VIEW (STACKING CARDS) --- */}
-      {/* ⚡ Added will-change-transform for smooth pinning */}
       <div ref={containerRef} className="hidden lg:block h-screen w-full relative perspective-[2000px] will-change-transform">
         {projects.map((project, i) => (
           <div
@@ -233,15 +235,17 @@ export default function WebDevelopment() {
       </div>
 
       {/* --- MOBILE/TABLET VIEW (SNAP SCROLL) --- */}
-      <div className="lg:hidden flex overflow-x-auto snap-x snap-mandatory px-4 md:px-8 pb-12 pt-4 gap-4 md:gap-6 w-full items-center min-h-[70vh] no-scrollbar">
+      {/* 🛠️ FIX: 'overscroll-x-contain' prevents browser back-swipe on mobile */}
+      {/* 🛠️ FIX: 'scroll-pl-4' ensures first card isn't stuck to edge */}
+      <div className="lg:hidden flex overflow-x-auto snap-x snap-mandatory scroll-pl-4 px-4 md:px-8 pb-12 pt-4 gap-4 md:gap-6 w-full items-center min-h-[70vh] no-scrollbar overscroll-x-contain">
         {projects.map((project, i) => (
             <div key={i} className="min-w-[85vw] md:min-w-[60vw] snap-center">
-                <div className="relative w-full h-[55vh] md:h-[60vh] rounded-[1.5rem] md:rounded-[2rem] bg-[#050505] border border-white/10 overflow-hidden shadow-2xl active:scale-[0.98] transition-transform duration-200 group">
+                <div className="relative w-full h-[55vh] md:h-[60vh] rounded-[1.5rem] md:rounded-[2rem] bg-[#050505] border border-white/10 overflow-hidden shadow-2xl active:scale-[0.98] transition-transform duration-200 group will-change-transform">
                     
                     {/* Mobile Header */}
                     <div className="absolute top-5 left-5 right-5 z-30 flex justify-between items-center">
-                          <span className="text-[10px] font-mono text-white/40 font-bold">0{i + 1}</span>
-                          <span className="px-2 py-1 rounded-md bg-black/60 border border-white/10 text-[9px] text-white/80 font-bold uppercase tracking-wider backdrop-blur-md">
+                          <span className="text-[10px] font-mono text-white/50 font-bold">0{i + 1}</span>
+                          <span className="px-2 py-1 rounded-md bg-black/60 border border-white/10 text-[9px] text-white/90 font-bold uppercase tracking-wider backdrop-blur-md">
                              {project.category}
                           </span>
                     </div>
@@ -252,25 +256,27 @@ export default function WebDevelopment() {
                             fill 
                             src={project.src} 
                             alt={project.title} 
+                            // ⚡ OPTIMIZATION: Ensure high quality on mobile retina screens
+                            quality={85}
                             sizes="(max-width: 768px) 85vw, 60vw"
                             className="object-cover opacity-60 grayscale group-hover:grayscale-0 transition-all duration-700" 
                         />
                     </div>
 
                     {/* Gradient Floor */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent z-20 pointer-events-none" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent z-20 pointer-events-none" />
                     
                     {/* Mobile Content */}
                     <div className="absolute bottom-0 w-full p-6 md:p-8 z-30 flex flex-col gap-3">
                         <h3 className="text-4xl md:text-5xl font-black text-white uppercase leading-none drop-shadow-lg">
                             {project.title}
                         </h3>
-                        <p className="text-white/60 text-xs md:text-sm line-clamp-2 font-light">
+                        <p className="text-white/70 text-xs md:text-sm line-clamp-2 font-light">
                             {project.description}
                         </p>
                         
-                        <div className="mt-2 flex items-center gap-2">
-                             <a href={project.link} target="_blank" className="px-4 py-3 md:py-4 w-full text-center rounded-full bg-white text-black text-[10px] md:text-xs font-black uppercase tracking-widest hover:bg-[#E50914] hover:text-white transition-colors">
+                        <div className="mt-3 flex items-center gap-2">
+                             <a href={project.link} target="_blank" className="px-4 py-3 md:py-4 w-full text-center rounded-full bg-white text-black text-[10px] md:text-xs font-black uppercase tracking-widest hover:bg-[#E50914] hover:text-white transition-colors border border-transparent hover:border-[#E50914]">
                                 View Case Study
                              </a>
                         </div>

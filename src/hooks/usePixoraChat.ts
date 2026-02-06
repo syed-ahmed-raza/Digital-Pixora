@@ -20,11 +20,68 @@ export const usePixoraChat = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [status, setStatus] = useState<ChatStatus>("idle");
-  const [loadingText, setLoadingText] = useState("Ready"); // Humanized default
+  const [loadingText, setLoadingText] = useState("Ready");
   const [networkHealth, setNetworkHealth] = useState<NetworkHealth>("good");
 
   // --- REFS ---
   const abortControllerRef = useRef<AbortController | null>(null);
+  const processedNavs = useRef<Set<string>>(new Set()); // To prevent double scrolling
+
+  // --- 🔊 SONIC UI ENGINE (Procedural Sci-Fi Sounds) ---
+  // No MP3 files needed. This generates sound using code.
+  const playUiSound = useCallback((type: 'send' | 'receive' | 'error' | 'nav') => {
+    try {
+        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioContext) return;
+        
+        const ctx = new AudioContext();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        const now = ctx.currentTime;
+
+        if (type === 'send') {
+            // High-pitch chirp (Star Trek style)
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(800, now);
+            osc.frequency.exponentialRampToValueAtTime(1200, now + 0.1);
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+            osc.start(now);
+            osc.stop(now + 0.1);
+        } else if (type === 'receive') {
+            // Soft data influx sound
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(400, now);
+            osc.frequency.linearRampToValueAtTime(600, now + 0.1);
+            gain.gain.setValueAtTime(0.05, now);
+            gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+            osc.start(now);
+            osc.stop(now + 0.2);
+        } else if (type === 'nav') {
+            // Futuristic swoosh
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(200, now);
+            osc.frequency.exponentialRampToValueAtTime(50, now + 0.3);
+            gain.gain.setValueAtTime(0.05, now);
+            gain.gain.linearRampToValueAtTime(0.001, now + 0.3);
+            osc.start(now);
+            osc.stop(now + 0.3);
+        } else if (type === 'error') {
+            // Low buzz
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(150, now);
+            osc.frequency.linearRampToValueAtTime(100, now + 0.2);
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+            osc.start(now);
+            osc.stop(now + 0.3);
+        }
+    } catch (e) { /* Silent fail if audio blocked */ }
+  }, []);
   
   // --- 🧠 MEMORY CORE (Auto-Repair) ---
   useEffect(() => {
@@ -40,26 +97,19 @@ export const usePixoraChat = () => {
         }
       }
       
-      // 📡 NETWORK MONITOR (Humanized Toasts)
+      // 📡 NETWORK MONITOR
       const updateNetwork = () => {
         if (!navigator.onLine) {
             setNetworkHealth("offline");
-            toast.error("You're offline. Reconnecting...", { id: 'net-status', style: { background: '#000', color: '#fff', border: '1px solid #E50914' } });
+            toast.error("Offline. Reconnecting...", { style: { background: '#000', color: '#fff', border: '1px solid #E50914' } });
             return;
         }
         
-        if (networkHealth === 'offline') {
-            toast.success("We're back online!", { id: 'net-status', style: { background: '#000', color: '#fff', border: '1px solid #22c55e' } });
-        }
-
         // @ts-ignore
         const conn = (navigator as any).connection;
         if (conn) {
             if (conn.saveData || conn.effectiveType === '2g') setNetworkHealth("poor");
-            else if (conn.effectiveType === '3g') setNetworkHealth("good");
-            else setNetworkHealth("excellent");
-        } else {
-            setNetworkHealth("good");
+            else setNetworkHealth("good");
         }
       };
       
@@ -72,7 +122,7 @@ export const usePixoraChat = () => {
     }
   }, []);
 
-  // AUTO-LOGGING (Last 30 messages)
+  // AUTO-LOGGING
   useEffect(() => {
     if (messages.length > 0) {
       const compressedMemory = messages.slice(-30); 
@@ -87,12 +137,42 @@ export const usePixoraChat = () => {
     }
   }, []);
 
+  // --- 🧭 NAVIGATOR AGENT (The Magic Function) ---
+  const handleNavigationTrigger = useCallback((text: string) => {
+    if (text.includes("[NAV:")) {
+        const match = text.match(/\[NAV:(.*?)\]/);
+        if (match && match[1]) {
+            const targetId = match[1].toLowerCase();
+            // Prevent duplicate scrolls for the same tag instance
+            if (!processedNavs.current.has(targetId + text.length)) {
+                processedNavs.current.add(targetId + text.length);
+                
+                const element = document.getElementById(targetId);
+                if (element) {
+                    playUiSound('nav'); // 🔊 SWOOSH SOUND
+                    triggerHaptic([50]);
+                    
+                    // Close chat on mobile if navigating
+                    if (window.innerWidth < 768) setIsOpen(false);
+
+                    setTimeout(() => {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        // Flash effect
+                        element.classList.add('ring-2', 'ring-[#E50914]', 'ring-offset-4', 'ring-offset-black', 'transition-all', 'duration-1000');
+                        setTimeout(() => element.classList.remove('ring-2', 'ring-[#E50914]', 'ring-offset-4', 'ring-offset-black'), 3000);
+                    }, 300); // Slight delay for effect
+                }
+            }
+        }
+    }
+  }, [playUiSound, triggerHaptic]);
+
   // --- 🚀 PROCESSING ENGINE ---
   const sendMessage = async (text: string) => {
     if (!text.trim() || status === 'thinking' || status === 'typing') return;
 
     if (!navigator.onLine) {
-        toast.error("Connection lost. Please wait.");
+        toast.error("Connection lost.");
         return;
     }
 
@@ -100,6 +180,7 @@ export const usePixoraChat = () => {
     abortControllerRef.current = new AbortController();
     
     triggerHaptic([15]);
+    playUiSound('send'); // 🔊 SEND SOUND
 
     const userMessage: Message = { 
         id: Date.now(), 
@@ -109,14 +190,14 @@ export const usePixoraChat = () => {
     };
     setMessages((prev) => [...prev, userMessage]);
 
-    // --- HUMAN SIMULATION PROTOCOL (More Natural) ---
+    // HUMAN SIMULATION
     setStatus("reading");
-    setLoadingText("Reading..."); // Humanized
+    setLoadingText("Reading...");
     const readingTime = Math.min(Math.max(600, text.length * 15), 1200); 
     await new Promise(resolve => setTimeout(resolve, readingTime));
 
     setStatus("thinking");
-    setLoadingText("Thinking..."); // Humanized
+    setLoadingText("Thinking...");
     
     try {
       const response = await fetch("/api/chat", {
@@ -132,7 +213,7 @@ export const usePixoraChat = () => {
       if (!response.body || !response.ok) throw new Error("Connection Error");
 
       setStatus("typing");
-      setLoadingText("Typing..."); // Humanized
+      setLoadingText("Typing...");
       
       const aiMessageId = Date.now() + 1;
       setMessages((prev) => [...prev, { 
@@ -152,12 +233,16 @@ export const usePixoraChat = () => {
         if (done) break;
         
         if (isFirstChunk) { 
-            triggerHaptic([20]); 
+            triggerHaptic([20]);
+            playUiSound('receive'); // 🔊 RECEIVE SOUND
             isFirstChunk = false; 
         }
         
         const chunk = decoder.decode(value, { stream: true });
         aiContent += chunk;
+
+        // 🔥 REAL-TIME NAVIGATION CHECK
+        handleNavigationTrigger(aiContent);
 
         setMessages((prev) => prev.map(m => m.id === aiMessageId ? { ...m, content: aiContent } : m));
       }
@@ -165,25 +250,27 @@ export const usePixoraChat = () => {
       setStatus("completed");
       triggerHaptic([10]);
 
-      // 🎉 SILENT CELEBRATION
-      if (aiContent.toLowerCase().includes("congratulations") || text.toLowerCase().includes("celebrate")) {
-          confetti({ particleCount: 100, spread: 70, origin: { y: 0.8 }, colors: ['#E50914', '#ffffff'] });
+      // 🎉 CELEBRATION
+      if (aiContent.toLowerCase().includes("congratulations") || text.toLowerCase().includes("deal")) {
+          confetti({ particleCount: 150, spread: 80, origin: { y: 0.8 }, colors: ['#E50914', '#ffffff'] });
+          playUiSound('receive');
       }
 
     } catch (error: any) {
       if (error.name === 'AbortError') return;
 
       setStatus("error");
+      playUiSound('error'); // 🔊 ERROR SOUND
       triggerHaptic([30, 30]); 
       
-      toast.error("Something went wrong. Retrying...", {
+      toast.error("Connection Interrupted. Retrying...", {
          style: { background: '#000', border: '1px solid #E50914', color: '#fff' }
       });
       
       setMessages((prev) => [...prev, { 
           id: Date.now(), 
           role: "assistant", 
-          content: "⚠️ **Connection dropped.**\nI couldn't get that. Could you say it again?",
+          content: "⚠️ **Signal Lost.**\nCan you repeat that?",
           timestamp: Date.now()
       }]);
     } finally {
@@ -192,19 +279,19 @@ export const usePixoraChat = () => {
     }
   };
 
-  // --- 🛠️ SYSTEM TOOLS ---
+  // --- 🛠️ TOOLS ---
   const clearChat = () => {
     triggerHaptic([20, 10]);
     setMessages([]); 
     localStorage.removeItem("pixora_hq_v8"); 
-    toast.success("Chat History Cleared", { style: { background: '#000', color: '#fff', fontSize: '12px' } });
+    toast.success("Memory Purged", { style: { background: '#000', color: '#fff' } });
   };
 
   const stopGeneration = () => {
     if (abortControllerRef.current) {
         abortControllerRef.current.abort();
         setStatus("idle");
-        toast("Stopped", { icon: '🛑', style: { background: '#000', color: '#fff' } });
+        toast("Halted", { icon: '🛑', style: { background: '#000', color: '#fff' } });
     }
   };
 

@@ -76,7 +76,7 @@ const VaultCard = ({ item, onClick, index }: { item: any, onClick: () => void, i
                 rotateY, 
                 transformStyle: "preserve-3d" 
             }}
-            className="group relative flex-shrink-0 cursor-none snap-center rounded-[2rem] bg-[#0a0a0a] border border-white/5 w-[85vw] sm:w-[60vw] md:w-[35vw] lg:w-[28vw] aspect-[4/5] md:aspect-[3/4] lg:aspect-square overflow-hidden perspective-1000 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] will-change-transform"
+            className="group relative flex-shrink-0 cursor-pointer snap-center rounded-[2rem] bg-[#0a0a0a] border border-white/5 w-[85vw] sm:w-[60vw] md:w-[35vw] lg:w-[28vw] aspect-[4/5] md:aspect-[3/4] lg:aspect-square overflow-hidden perspective-1000 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] will-change-transform"
         >
             {/* 🌟 1. BACKGROUND GLOW */}
             <div 
@@ -207,7 +207,7 @@ const AdvancedLightbox = ({ item, onClose }: { item: any, onClose: () => void })
                                         height={1800}
                                         className={`w-auto h-auto max-w-full max-h-[80vh] object-contain drop-shadow-[0_0_50px_rgba(0,0,0,0.8)] ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
                                         onLoad={() => setImgLoaded(true)}
-                                        unoptimized
+                                        unoptimized // 🔥 High Quality for Zoom
                                         priority
                                     />
                                 </motion.div>
@@ -241,10 +241,12 @@ export default function VisualDesign() {
   const [selectedItem, setSelectedItem] = useState<any>(null); 
   
   useLayoutEffect(() => {
-    // ⚡ LAYOUT FIX: Images load hone ke baad scroll refresh karein
-    setTimeout(() => {
-        ScrollTrigger.refresh();
-    }, 1000);
+    // ⚡ Safe Refresh
+    const ctx = gsap.context(() => {
+        setTimeout(() => {
+            ScrollTrigger.refresh();
+        }, 1000);
+    });
 
     const mm = gsap.matchMedia();
     mm.add("(min-width: 1024px)", () => {
@@ -270,7 +272,11 @@ export default function VisualDesign() {
         },
       });
     });
-    return () => mm.revert();
+
+    return () => {
+        ctx.revert();
+        mm.revert();
+    };
   }, []);
 
   return (

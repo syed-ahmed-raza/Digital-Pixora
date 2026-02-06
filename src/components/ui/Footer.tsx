@@ -13,14 +13,16 @@ import {
 import { wrap } from "@motionone/utils";
 import { ArrowUp, ArrowUpRight, Instagram, Linkedin, Twitter, Radio, Clock, Command } from "lucide-react";
 
-// ✅ IMPORT COMMAND MENU
+// ✅ IMPORT COMMAND MENU (Assuming this handles the actual menu UI)
 import CommandMenu from "@/components/ui/CommandMenu";
 
-// --- 1. LIVE CLOCK COMPONENT ---
+// --- 1. LIVE CLOCK COMPONENT (Hydration Safe) ---
 const LiveClock = () => {
-    const [time, setTime] = useState<string | null>(null);
+    const [time, setTime] = useState<string>("--:--:--");
+    const [mounted, setMounted] = useState(false);
     
     useEffect(() => {
+        setMounted(true);
         const updateTime = () => {
             const now = new Date();
             const options: Intl.DateTimeFormatOptions = { 
@@ -38,7 +40,8 @@ const LiveClock = () => {
         return () => clearInterval(interval);
     }, []);
 
-    if (!time) return <span className="font-mono tabular-nums opacity-50">--:--:--</span>;
+    // Prevent Server/Client Mismatch
+    if (!mounted) return <span className="font-mono tabular-nums opacity-50">--:--:--</span>;
     return <span className="font-mono tabular-nums">{time}</span>;
 };
 
@@ -55,6 +58,7 @@ function ParallaxText({ children, baseVelocity = 100 }: ParallaxProps) {
   const smoothVelocity = useSpring(scrollVelocity, { damping: 50, stiffness: 400 });
   const velocityFactor = useTransform(smoothVelocity, [0, 1000], [0, 5], { clamp: false });
 
+  // Wrap range optimized for smoother loop
   const x = useTransform(baseX, (v) => `${wrap(-20, -45, v)}%`);
 
   const directionFactor = useRef<number>(1);
@@ -73,7 +77,7 @@ function ParallaxText({ children, baseVelocity = 100 }: ParallaxProps) {
   });
 
   return (
-    <div className="overflow-hidden whitespace-nowrap flex flex-nowrap border-y border-white/5 bg-[#050505] py-6 relative z-20">
+    <div className="overflow-hidden whitespace-nowrap flex flex-nowrap border-y border-white/5 bg-[#050505] py-6 relative z-20 select-none pointer-events-none">
       <motion.div className="flex whitespace-nowrap gap-16 px-8 will-change-transform" style={{ x }}>
         {children}
         {children}
@@ -84,14 +88,16 @@ function ParallaxText({ children, baseVelocity = 100 }: ParallaxProps) {
   );
 }
 
-// --- 3. MAGNETIC SOCIAL BUTTON ---
+// --- 3. MAGNETIC SOCIAL BUTTON (Safe & Optimized) ---
 const MagneticSocial = ({ children, href }: { children: React.ReactNode, href: string }) => {
     const ref = useRef<HTMLAnchorElement>(null);
     const [position, setPosition] = useState({ x: 0, y: 0 });
 
     const handleMouse = (e: React.MouseEvent) => {
+        if (!ref.current) return;
         const { clientX, clientY } = e;
-        const { height, width, left, top } = ref.current!.getBoundingClientRect();
+        const { height, width, left, top } = ref.current.getBoundingClientRect();
+        // Magnetic Strength: 0.5 (Strong but controlled)
         setPosition({ x: (clientX - (left + width / 2)) * 0.5, y: (clientY - (top + height / 2)) * 0.5 });
     };
 
@@ -100,28 +106,43 @@ const MagneticSocial = ({ children, href }: { children: React.ReactNode, href: s
             ref={ref}
             href={href}
             target="_blank"
+            rel="noopener noreferrer" // Security best practice
             onMouseMove={handleMouse}
             onMouseLeave={() => setPosition({ x: 0, y: 0 })}
             animate={{ x: position.x, y: position.y }}
-            transition={{ type: "spring", stiffness: 150, damping: 15 }}
-            className="relative w-14 h-14 flex items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/40 hover:text-white hover:border-[#E50914] hover:bg-[#E50914] transition-all duration-300 group"
+            transition={{ type: "spring", stiffness: 150, damping: 15, mass: 0.1 }}
+            className="relative w-14 h-14 flex items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/40 hover:text-white hover:border-[#E50914] hover:bg-[#E50914] transition-all duration-300 group cursor-pointer"
         >
-            <div className="relative z-10 group-hover:scale-110 transition-transform">{children}</div>
+            <div className="relative z-10 group-hover:scale-110 transition-transform duration-300">{children}</div>
         </motion.a>
     );
 };
 
 export default function Footer() {
+  const [year, setYear] = useState<number | null>(null);
+
+  useEffect(() => {
+      setYear(new Date().getFullYear());
+  }, []);
+
   const scrollToSection = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+    const element = document.getElementById(id);
+    if (element) {
+        element.scrollIntoView({ behavior: "smooth" });
+    }
   };
 
   const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
 
+  const triggerCommandMenu = () => {
+      // Simulate CMD+K event to trigger the Command Menu component
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, ctrlKey: true }));
+  };
+
   return (
     <footer className="relative bg-[#020202] w-full flex flex-col justify-end overflow-hidden pt-20">
       
-      {/* 🔥 ADDED: COMMAND MENU (Hidden by default, triggered by key or button) */}
+      {/* COMMAND MENU COMPONENT */}
       <CommandMenu />
 
       {/* --- BACKGROUND SINGULARITY --- */}
@@ -131,7 +152,7 @@ export default function Footer() {
       </div>
 
       {/* --- VELOCITY MARQUEE --- */}
-      <div className="w-full z-20 pointer-events-none select-none mb-20">
+      <div className="w-full z-20 mb-20">
           <ParallaxText baseVelocity={2}>
               <span className="text-sm md:text-base font-black uppercase tracking-[0.4em] text-white/20 flex items-center gap-16">
                   Strategy <span className="w-1.5 h-1.5 bg-[#E50914] rounded-full shadow-[0_0_10px_#E50914]" />
@@ -186,7 +207,7 @@ export default function Footer() {
               {/* COL 2: GIANT NAVIGATION */}
               <div className="md:col-span-4 flex flex-col justify-end">
                   <ul className="space-y-2">
-                      {['home', 'services', 'work', 'about', 'contact'].map((id, index) => (
+                      {['home', 'services', 'work', 'about', 'contact'].map((id) => (
                           <li key={id} className="group">
                               <button 
                                   onClick={() => scrollToSection(id)}
@@ -208,7 +229,8 @@ export default function Footer() {
               {/* COL 3: SOCIALS & LOCATION */}
               <div className="md:col-span-3 flex flex-col justify-between h-full">
                   <div className="p-8 rounded-3xl bg-[#0a0a0a] border border-white/10 relative overflow-hidden group">
-                        <div className="absolute inset-0 rounded-full border border-white/5 w-[200%] h-[200%] -top-[50%] -left-[50%] animate-[spin_4s_linear_infinite] opacity-0 group-hover:opacity-20 bg-[conic-gradient(from_0deg,transparent_0deg,rgba(229,9,20,0.5)_360deg)] pointer-events-none" />
+                        {/* Spinning Border Effect */}
+                        <div className="absolute inset-0 rounded-full border border-white/5 w-[200%] h-[200%] -top-[50%] -left-[50%] animate-[spin_10s_linear_infinite] opacity-0 group-hover:opacity-20 bg-[conic-gradient(from_0deg,transparent_0deg,rgba(229,9,20,0.5)_360deg)] pointer-events-none will-change-transform" />
                         
                         <div className="relative z-10">
                             <span className="text-[#E50914] text-[10px] font-black uppercase tracking-widest block mb-4">Base of Operations</span>
@@ -231,7 +253,7 @@ export default function Footer() {
           {/* BOTTOM BAR */}
           <div className="flex flex-col-reverse md:flex-row justify-between items-center gap-6 pt-12">
               <p className="text-white/20 text-[10px] font-bold uppercase tracking-widest">
-                © {new Date().getFullYear()} Digital Pixora. All Rights Reserved.
+                © {year || "----"} Digital Pixora. All Rights Reserved.
               </p>
               
               <div className="flex items-center gap-8">
@@ -239,14 +261,14 @@ export default function Footer() {
                       Back to Top <ArrowUp className="w-4 h-4 group-hover:-translate-y-1 transition-transform" />
                   </button>
                   
-                  {/* 🔥 UPDATED: CLICKABLE COMMAND BUTTON */}
-                  <div 
-                    onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
-                    className="hidden md:flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 bg-white/5 cursor-pointer hover:bg-white/10 active:scale-95 transition-all select-none"
+                  {/* CLICKABLE COMMAND BUTTON */}
+                  <button 
+                    onClick={triggerCommandMenu}
+                    className="hidden md:flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 bg-white/5 cursor-pointer hover:bg-white/10 active:scale-95 transition-all select-none group"
                   >
-                      <Command className="w-3 h-3 text-white/40" />
-                      <span className="text-[10px] font-mono text-white/40">CMD+K</span>
-                  </div>
+                      <Command className="w-3 h-3 text-white/40 group-hover:text-white transition-colors" />
+                      <span className="text-[10px] font-mono text-white/40 group-hover:text-white transition-colors">CMD+K</span>
+                  </button>
               </div>
           </div>
       </div>

@@ -44,17 +44,17 @@ const reviews = [
   },
 ];
 
-// --- 1. THE TITAN REVIEW CARD (Lightweight) ---
+// --- 1. REVIEW CARD (Clickable Feel) ---
 const ReviewCard = ({ review }: { review: any }) => {
     return (
-        <div className="group/card relative w-full border border-white/5 bg-[#0a0a0a] rounded-2xl p-6 md:p-8 overflow-hidden transition-all duration-300 hover:border-[#E50914]/40 hover:bg-[#0f0f0f] will-change-transform">
+        <div className="group/card relative w-full border border-white/5 bg-[#0a0a0a] rounded-2xl p-6 md:p-8 overflow-hidden transition-all duration-300 hover:border-[#E50914]/40 hover:bg-[#0f0f0f] cursor-default md:cursor-pointer will-change-transform transform-gpu">
             
             {/* Hover Spotlight Gradient */}
             <div className="absolute inset-0 bg-gradient-to-br from-[#E50914]/5 via-transparent to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 pointer-events-none" />
 
             <div className="relative z-10 flex flex-col h-full justify-between">
                 <div>
-                    {/* Header: Stars & Audio Wave */}
+                    {/* Header */}
                     <div className="flex justify-between items-start mb-6">
                         <div className="flex flex-col gap-2">
                             <div className="flex gap-1">
@@ -100,22 +100,24 @@ const ReviewCard = ({ review }: { review: any }) => {
     );
 };
 
-// --- 2. INFINITE SCROLL COLUMN (Memoized & Accelerated) ---
+// --- 2. INFINITE SCROLL COLUMN ---
 const ReviewColumn = ({ reviews, className, duration = "40s", reverse = false }: { reviews: any[], className?: string, duration?: string, reverse?: boolean }) => {
-    // ⚡ Optimization: Memoize array to prevent recreation on re-renders
-    const infiniteReviews = useMemo(() => [...reviews, ...reviews], [reviews]);
+    // 2x Data for Seamless Loop
+    const infiniteReviews = useMemo(() => [...reviews, ...reviews], [reviews]); 
 
     return (
-        <div 
-            className={`${className} relative h-full overflow-hidden mask-fade`}
-            style={{ 
-                '--duration': duration,
-                '--direction': reverse ? 'reverse' : 'normal'
-            } as React.CSSProperties}
-        >
-            <div className="animate-marquee flex flex-col gap-6 w-full will-change-transform backface-hidden perspective-1000">
+        <div className={`${className} relative h-full overflow-hidden`}>
+            <div 
+                // Class name updated to match CSS logic
+                className="run-vertical-scroll flex flex-col gap-6 w-full will-change-transform backface-hidden"
+                style={{ 
+                    '--duration': duration,
+                    '--direction': reverse ? 'reverse' : 'normal'
+                } as React.CSSProperties}
+            >
                 {infiniteReviews.map((review, i) => (
-                    <ReviewCard key={i} review={review} />
+                    // Unique Key Fix
+                    <ReviewCard key={`${i}-${review.client}-${reverse ? 'rev' : 'norm'}`} review={review} />
                 ))}
             </div>
         </div>
@@ -127,7 +129,7 @@ export default function Testimonials() {
   return (
     <section className="relative bg-[#050505] border-t border-white/5 overflow-hidden py-24 md:py-40 z-20">
       
-      {/* Background Noise (Optimized: Using CSS over SVG for grain if possible, but kept safe here) */}
+      {/* Background Noise */}
       <div className="absolute inset-0 pointer-events-none opacity-[0.03] z-0 overflow-hidden mix-blend-overlay">
          <div className="w-full h-full bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
       </div>
@@ -146,26 +148,26 @@ export default function Testimonials() {
         </div>
 
         {/* --- INFINITE MARQUEE GRID --- */}
-        {/* ⚡ Layout: Fixed heights ensure no CLS (Cumulative Layout Shift) */}
-        <div className="relative h-[600px] md:h-[800px] overflow-hidden">
-            
-            {/* Top & Bottom Fade Masks */}
-            <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-[#050505] to-transparent z-20 pointer-events-none" />
-            <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-[#050505] to-transparent z-20 pointer-events-none" />
-
+        <div 
+            className="relative h-[600px] md:h-[800px] overflow-hidden"
+            style={{ 
+                maskImage: 'linear-gradient(to bottom, transparent, black 10%, black 90%, transparent)',
+                WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 10%, black 90%, transparent)' 
+            }}
+        >
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 h-full px-2">
                 
-                {/* Column 1 (Slow) */}
+                {/* Column 1 (Normal Speed) */}
                 <ReviewColumn reviews={reviews} duration="60s" className="h-full" />
 
-                {/* Column 2 (Reverse - Hidden Mobile) */}
+                {/* Column 2 (Reverse - Hidden on Mobile) */}
                 <div className="hidden md:block h-full">
-                     <ReviewColumn reviews={reviews} duration="50s" reverse={true} />
+                      <ReviewColumn reviews={reviews} duration="50s" reverse={true} />
                 </div>
 
-                {/* Column 3 (Fastest - Hidden Tablet) */}
+                {/* Column 3 (Fastest - Hidden on Tablet) */}
                 <div className="hidden lg:block h-full">
-                     <ReviewColumn reviews={reviews} duration="45s" />
+                      <ReviewColumn reviews={reviews} duration="45s" />
                 </div>
 
             </div>
@@ -173,26 +175,24 @@ export default function Testimonials() {
 
       </div>
 
-      {/* Global Styles for Animations (Hardware Accelerated) */}
+      {/* 🔥 DIRECT CSS LOGIC (Hover Pause Added) */}
       <style jsx global>{`
-        /* Force GPU Acceleration */
         .backface-hidden {
             backface-visibility: hidden;
             -webkit-backface-visibility: hidden;
         }
-        .perspective-1000 {
-            perspective: 1000px;
-            -webkit-perspective: 1000px;
+        
+        @keyframes scrollVertical {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-50%); }
         }
         
-        @keyframes marquee {
-            0% { transform: translate3d(0, 0, 0); }
-            100% { transform: translate3d(0, -50%, 0); }
+        .run-vertical-scroll {
+            animation: scrollVertical var(--duration) linear infinite var(--direction);
         }
-        .animate-marquee {
-            animation: marquee var(--duration) linear infinite var(--direction);
-        }
-        .animate-marquee:hover {
+
+        /* ✅ HOVER PAUSE FIX: Jab user hover karega, animation ruk jayegi */
+        .run-vertical-scroll:hover {
             animation-play-state: paused;
         }
       `}</style>

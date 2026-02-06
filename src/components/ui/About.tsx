@@ -32,7 +32,7 @@ const HyperText = ({ text, trigger }: { text: string, trigger: boolean }) => {
   }, [trigger, text]);
 
   return (
-    <span className="relative inline-block overflow-hidden">
+    <span className="relative inline-block overflow-hidden min-w-[10ch]">
       <span className="opacity-0">{text}</span>
       <span className="absolute top-0 left-0 w-full h-full">{displayText}</span>
     </span>
@@ -57,7 +57,7 @@ const Counter = ({ value, suffix = "" }: { value: number, suffix?: string }) => 
   return <span ref={ref} className="tabular-nums">{display}{suffix}</span>;
 };
 
-// --- 3. 3D TILT CONTAINER (Desktop Only Optimization) ---
+// --- 3. 3D TILT CONTAINER (Desktop Optimized) ---
 const TiltContainer = ({ children }: { children: React.ReactNode }) => {
     const x = useMotionValue(0);
     const y = useMotionValue(0);
@@ -77,7 +77,7 @@ const TiltContainer = ({ children }: { children: React.ReactNode }) => {
             style={{ rotateX, rotateY, perspective: 1000 }}
             onMouseMove={handleMouseMove}
             onMouseLeave={() => { x.set(0); y.set(0); }}
-            className="w-full aspect-square max-w-[90vw] md:max-w-[500px] relative transition-all ease-out duration-200 group mx-auto will-change-transform"
+            className="w-full aspect-square max-w-[90vw] md:max-w-[500px] relative transition-all ease-out duration-200 group mx-auto will-change-transform hidden lg:block"
         >
             {/* Glowing Border Gradient */}
             <div className="absolute -inset-0.5 bg-gradient-to-br from-[#E50914]/40 to-transparent rounded-[2.1rem] blur opacity-20 group-hover:opacity-50 transition-opacity duration-500" />
@@ -98,7 +98,7 @@ const VisualBrain = () => (
     <div className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden bg-grid-white/[0.02]">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-1/2 bg-[#E50914] opacity-[0.15] blur-[80px]" />
         
-        {/* Spinning Core - GPU Optimized */}
+        {/* Spinning Core */}
         <motion.div 
             animate={{ rotate: 360 }}
             transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
@@ -156,12 +156,12 @@ const VisualCode = () => (
 
             {/* Code Body */}
             <div className="p-6 space-y-3 font-mono text-xs relative">
-                <div className="flex gap-3 text-white/40"><span>01</span> <span className="text-purple-400">import</span> <span className="text-white">Future</span> <span className="text-purple-400">from</span> <span className="text-yellow-300">'@pixora/core'</span>;</div>
+                <div className="flex gap-3 text-white/40"><span>01</span> <div><span className="text-purple-400">import</span> <span className="text-white">Future</span> <span className="text-purple-400">from</span> <span className="text-yellow-300">'@pixora/core'</span>;</div></div>
                 <div className="flex gap-3 text-white/40"><span>02</span></div>
-                <div className="flex gap-3 text-white/40"><span>03</span> <span className="text-blue-400">const</span> <span className="text-blue-300">stack</span> = <span className="text-yellow-300">"Next.js 15"</span>;</div>
-                <div className="flex gap-3 text-white/40"><span>04</span> <span className="text-blue-400">await</span> <span className="text-blue-300">deploy</span>(<span className="text-white">Universe</span>);</div>
+                <div className="flex gap-3 text-white/40"><span>03</span> <div><span className="text-blue-400">const</span> <span className="text-blue-300">stack</span> = <span className="text-yellow-300">"Next.js 15"</span>;</div></div>
+                <div className="flex gap-3 text-white/40"><span>04</span> <div><span className="text-blue-400">await</span> <span className="text-blue-300">deploy</span>(<span className="text-white">Universe</span>);</div></div>
                 
-                {/* Compilation Bar - OPTIMIZED: Uses scaleX instead of width to prevent reflows */}
+                {/* Compilation Bar */}
                 <div className="mt-6 pt-4 border-t border-white/5">
                     <div className="flex justify-between text-[10px] uppercase font-bold text-green-400 mb-2">
                         <span className="flex items-center gap-1"><Code2 className="w-3 h-3" /> Compiling</span> 
@@ -185,7 +185,7 @@ const VisualCode = () => (
 // C. IMPACT (The Radar)
 const VisualGlobe = () => (
     <div className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden bg-black">
-        {/* Radar Sweep - GPU Optimized */}
+        {/* Radar Sweep */}
         <div className="absolute inset-0 bg-[conic-gradient(from_0deg_at_50%_50%,transparent_0deg,transparent_300deg,rgba(229,9,20,0.2)_360deg)] animate-[spin_4s_linear_infinite] will-change-transform" />
         
         {/* Grid Floor */}
@@ -225,8 +225,15 @@ const content = [
   { id: "03", tag: "Impact", title: "Global Reach.", desc: "Deployed on the Edge. Whether your user is in New York, London, or Dubai, your app loads in <100ms. We build borderless digital empires.", visual: <VisualGlobe /> }
 ];
 
+interface TextCardProps {
+    item: typeof content[0];
+    index: number;
+    setActiveIndex: (index: number) => void;
+    isActive: boolean;
+}
+
 // --- 5. TEXT CARD COMPONENT ---
-const TextCard = ({ item, index, setActiveIndex }: any) => {
+const TextCard = ({ item, index, setActiveIndex }: TextCardProps) => {
     const ref = useRef(null);
     const isInView = useInView(ref, { margin: "-45% 0px -45% 0px" });
 
@@ -304,7 +311,7 @@ export default function About() {
         <div className="flex flex-col lg:flex-row gap-12 lg:gap-24 items-start relative">
             
             {/* STICKY VISUALS (Desktop) */}
-            <div className="hidden lg:flex lg:w-1/2 sticky top-20 h-[80vh] items-center justify-center">
+            <div className="hidden lg:flex lg:w-1/2 sticky top-32 h-[600px] items-center justify-center">
                 <TiltContainer>
                     <AnimatePresence mode="wait">
                         <motion.div 
@@ -322,7 +329,7 @@ export default function About() {
             </div>
 
             {/* SCROLLING TEXT */}
-            <div className="w-full lg:w-1/2 flex flex-col pt-0 lg:pt-20">
+            <div className="w-full lg:w-1/2 flex flex-col pt-0 lg:pt-10">
                 {content.map((item, i) => (
                     <TextCard key={i} item={item} index={i} setActiveIndex={setActiveIndex} isActive={activeIndex === i} />
                 ))}
@@ -343,12 +350,12 @@ export default function About() {
                 { label: "Global Partners", val: 12, suffix: "+", icon: <Globe className="w-4 h-4 text-[#E50914]"/> },
                 { label: "Client Retention", val: 98, suffix: "%", icon: <CheckCircle2 className="w-4 h-4 text-[#E50914]"/> }
             ].map((stat, i) => (
-                <div key={i} className="flex flex-col group cursor-default">
+                <div key={i} className="flex flex-col group cursor-default p-4 hover:bg-white/5 rounded-xl transition-colors duration-300">
                     <div className="mb-3 opacity-50 group-hover:opacity-100 transition-opacity">{stat.icon}</div>
                     <h4 className="text-3xl md:text-5xl font-bold text-white mb-2 tabular-nums tracking-tight">
                         <Counter value={stat.val} suffix={stat.suffix} />
                     </h4>
-                    <p className="text-[10px] md:text-xs uppercase tracking-widest text-white/40 border-l border-[#E50914] pl-3">
+                    <p className="text-[10px] md:text-xs uppercase tracking-widest text-white/40 border-l border-[#E50914] pl-3 group-hover:text-white transition-colors">
                         {stat.label}
                     </p>
                 </div>

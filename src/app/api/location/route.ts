@@ -2,33 +2,77 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
   try {
-    // ⚡ VERCEL BUILT-IN GEOLOCATION (Zero Latency)
-    // Vercel deployment par ye headers automatically milte hain
-    const city = req.headers.get("x-vercel-ip-city") || "UNKNOWN SECTOR";
-    const country = req.headers.get("x-vercel-ip-country") || "PK";
-    const region = req.headers.get("x-vercel-ip-country-region") || "N/A";
+ 
+    
+    const cityHeader = req.headers.get("x-vercel-ip-city");
+    const countryHeader = req.headers.get("x-vercel-ip-country");
+    const regionHeader = req.headers.get("x-vercel-ip-country-region");
+    const latHeader = req.headers.get("x-vercel-ip-latitude");
+    const longHeader = req.headers.get("x-vercel-ip-longitude");
 
-    // 🖥️ Development Check (Localhost bypass)
-    const ip = req.headers.get("x-forwarded-for") || "127.0.0.1";
-    if (ip === "127.0.0.1" || ip === "::1") {
-      return NextResponse.json({ 
-        city: "HYDERABAD", // Dev mode mein Hyderabad dikhao
-        region: "SINDH", 
-        country_name: "Pakistan" 
+
+    if (cityHeader && countryHeader) {
+      return NextResponse.json({
+        city: cityHeader.toUpperCase(),
+        region: regionHeader,
+        country: countryHeader,
+        lat: latHeader,
+        lon: longHeader,
+        method: "EDGE_CACHE" 
+      }, {
+        headers: {
+         
+          "Cache-Control": "s-maxage=3600, stale-while-revalidate"
+        }
       });
     }
 
+
+
+    let ip = req.headers.get("x-forwarded-for")?.split(",")[0] || req.headers.get("x-real-ip") || "127.0.0.1";
+    
+  
+    if (ip === "127.0.0.1" || ip === "::1") {
+    
+       const ipRes = await fetch('https://api.ipify.org?format=json');
+       const ipData = await ipRes.json();
+       ip = ipData.ip;
+    }
+
+   
+   
+    const res = await fetch(`http://ip-api.com/json/${ip}?fields=status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as`);
+    const data = await res.json();
+
+    if (data.status === "fail") {
+        throw new Error("IP Lookup Failed");
+    }
+
     return NextResponse.json({
-      city: city.toUpperCase(),
-      region: region,
-      country_name: country
+      city: data.city ? data.city.toUpperCase() : "UNKNOWN SECTOR",
+      region: data.regionName,
+      country: data.countryCode, 
+      country_full: data.country,
+      lat: data.lat,
+      lon: data.lon,
+      isp: data.isp, 
+      timezone: data.timezone,
+      method: "DEEP_SCAN"
+    }, {
+        headers: {
+          "Cache-Control": "s-maxage=3600, stale-while-revalidate"
+        }
     });
 
   } catch (error) {
-    console.error("📍 Location Error:", error);
+    console.error("📍 Location Intelligence Error:", error);
+    
+   
     return NextResponse.json({ 
         city: "UNKNOWN SECTOR", 
-        region: "N/A" 
+        region: "N/A", 
+        country: "N/A",
+        method: "FAILSAFE"
     });
   }
 }

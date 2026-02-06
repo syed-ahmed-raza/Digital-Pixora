@@ -4,69 +4,68 @@ import { useRef, useState, useEffect, useCallback } from "react";
 import { motion, useScroll, useTransform, useSpring, useMotionValue, Variants } from "framer-motion";
 import { ArrowUpRight, ArrowRight } from "lucide-react";
 
-// --- ANIMATION VARIANTS (Optimized for 60FPS) ---
+// --- ANIMATION VARIANTS (Optimized) ---
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
     transition: {
-      delayChildren: 0.1,
-      staggerChildren: 0.1
+      delayChildren: 0.2, // Thoda delay taake page load stabilize ho jaye
+      staggerChildren: 0.15
     }
   }
 };
 
-
-
 const itemVariants: Variants = {
-  hidden: { y: 20, opacity: 0 },
+  hidden: { y: 30, opacity: 0 },
   visible: { 
     y: 0, 
     opacity: 1, 
-    transition: { duration: 0.5, ease: "easeOut" } // Faster duration for snappier feel
+    transition: { duration: 0.6, ease: [0.33, 1, 0.68, 1] } 
   }
 };
 
-// --- 1. SCRAMBLE TEXT (Resource Saver) ---
+// --- 1. SCRAMBLE TEXT (Hydration Safe) ---
 const ScrambleText = ({ text }: { text: string }) => {
     const [display, setDisplay] = useState(text);
+    const [mounted, setMounted] = useState(false); // Fix hydration mismatch
     const chars = "!@#$%^&*()_+~`|{}[]:;?><,./-=";
 
     useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    useEffect(() => {
+        if (!mounted) return;
+
         let iteration = 0;
         let interval: NodeJS.Timeout;
 
-        // Mobile check directly inside effect
-        const isMobile = window.innerWidth < 768;
-        // Desktop: 30ms (Fast), Mobile: 60ms (Battery Saver)
-        const speed = isMobile ? 60 : 30; 
+        // Mobile par thoda fast khatam ho taake user bore na ho
+        const isMobile = window.innerWidth < 768; 
+        const speed = isMobile ? 50 : 30; 
 
-        const startScramble = setTimeout(() => {
-            interval = setInterval(() => {
-                setDisplay(
-                    text.split("")
-                        .map((letter, index) => {
-                            if (index < iteration) return text[index];
-                            return chars[Math.floor(Math.random() * chars.length)];
-                        })
-                        .join("")
-                );
+        interval = setInterval(() => {
+            setDisplay(
+                text.split("")
+                    .map((letter, index) => {
+                        if (index < iteration) return text[index];
+                        return chars[Math.floor(Math.random() * chars.length)];
+                    })
+                    .join("")
+            );
 
-                if (iteration >= text.length) clearInterval(interval);
-                iteration += 1 / 3;
-            }, speed);
-        }, 500);
+            if (iteration >= text.length) clearInterval(interval);
+            iteration += 1 / 3;
+        }, speed);
 
-        return () => {
-            clearTimeout(startScramble);
-            clearInterval(interval);
-        };
-    }, [text]);
+        return () => clearInterval(interval);
+    }, [text, mounted]);
 
     return <span>{display}</span>;
 };
 
-// --- 2. MAGNETIC BUTTON (Smart Logic) ---
+// --- 2. MAGNETIC BUTTON (Desktop Only Logic) ---
 const MagneticButton = ({ children, onClick, className }: any) => {
     const ref = useRef<HTMLButtonElement>(null);
     const x = useMotionValue(0);
@@ -76,8 +75,8 @@ const MagneticButton = ({ children, onClick, className }: any) => {
     const ySpring = useSpring(y, { stiffness: 150, damping: 15, mass: 0.1 });
 
     const handleMouse = (e: React.MouseEvent) => {
-        // ⚠️ CRITICAL OPTIMIZATION: Mobile par calculation block kar di
-        if (window.innerWidth < 1024) return; 
+        // Mobile par magnet effect disable (User Experience)
+        if (typeof window !== "undefined" && window.innerWidth < 1024) return; 
 
         const { clientX, clientY } = e;
         const rect = ref.current?.getBoundingClientRect();
@@ -110,26 +109,20 @@ const MagneticButton = ({ children, onClick, className }: any) => {
 
 export default function Hero() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [isMobile, setIsMobile] = useState(true);
+  const [isMobile, setIsMobile] = useState(true); // Default true prevents hydration flicker
 
-  // --- SAFE RESIZE LISTENER ---
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 1024);
-    
-    // Initial Check
     checkMobile();
-    
-    // Passive listener for performance
     window.addEventListener("resize", checkMobile, { passive: true });
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // --- OPTIMIZED PARALLAX (Only Active on Desktop) ---
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
 
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (window.innerWidth < 1024) return; // Stop execution on laptops/tablets/mobiles
+    if (window.innerWidth < 1024) return; 
     
     const { clientX, clientY } = e;
     const width = window.innerWidth;
@@ -146,14 +139,17 @@ export default function Hero() {
   const xSpring = useSpring(mouseX, springConfig);
   const ySpring = useSpring(mouseY, springConfig);
   
-  // Transform ranges
-  const rotateX = useTransform(ySpring, [-0.5, 0.5], [7, -7]); 
-  const rotateY = useTransform(xSpring, [-0.5, 0.5], [-7, 7]);
-  const textX = useTransform(xSpring, [-0.5, 0.5], [-20, 20]);
+  const rotateX = useTransform(ySpring, [-0.5, 0.5], [5, -5]); // Thoda subtle kiya (7 se 5)
+  const rotateY = useTransform(xSpring, [-0.5, 0.5], [-5, 5]);
+  const textX = useTransform(xSpring, [-0.5, 0.5], [-15, 15]);
 
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
-    if (element) element.scrollIntoView({ behavior: "smooth" });
+    if (element) {
+        // Offset for sticky header
+        const y = element.getBoundingClientRect().top + window.pageYOffset - 80;
+        window.scrollTo({ top: y, behavior: 'smooth' });
+    }
   };
 
   return (
@@ -161,102 +157,98 @@ export default function Hero() {
         id="home"
         ref={containerRef}
         onMouseMove={handleMouseMove}
-        className="relative min-h-[100dvh] flex flex-col justify-center items-center px-4 md:px-6 z-10 pt-24 pb-24 overflow-hidden bg-transparent"
-        style={{ perspective: isMobile ? "none" : "1000px" }}
+        // 🛠️ FIX: min-h-[100dvh] ensures full height on mobile browsers (Safari address bar fix)
+        className="relative min-h-[100dvh] flex flex-col justify-center items-center px-4 sm:px-6 md:px-10 pt-10 pb-4 overflow-hidden bg-transparent"
+        style={{ perspective: isMobile ? "none" : "1200px" }}
     >
       
-      {/* --- BACKGROUND ATMOSPHERE (CSS GPU Animation) --- */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {/* Desktop: Animated Blob
-            Mobile: Static Gradient (Zero Lag)
-           */}
+      {/* --- BACKGROUND ATMOSPHERE --- */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
           <div 
              className={`
                 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 
-                w-[80vw] h-[80vw] md:w-[45vw] md:h-[45vw] 
+                w-[80vw] h-[80vw] md:w-[50vw] md:h-[50vw] 
                 bg-gradient-to-tr from-[#682a2d] to-purple-900 
-                opacity-[0.2] 
+                opacity-[0.12] md:opacity-[0.18] 
                 rounded-full pointer-events-none 
                 will-change-transform
                 ${isMobile ? "blur-[50px]" : "blur-[90px] animate-blob"} 
              `} 
           />
-          
-          {/* Noise Texture (Only if needed, extremely light) */}
-          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay" />
+          {/* Noise is subtle, performant */}
+          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.04] mix-blend-overlay" />
       </div>
 
       <motion.div
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="relative z-20 flex flex-col items-center w-full max-w-[1400px]"
+        // z-index 20 ensures it's above background but below Navbar (z-100)
+        className="relative z-20 flex flex-col items-center justify-center w-full max-w-7xl mx-auto flex-grow"
       >
 
           {/* STATUS BADGE */}
-          <motion.div variants={itemVariants} className="mb-6 md:mb-10">
+          <motion.div variants={itemVariants} className="mb-6 sm:mb-8 md:mb-10">
             <div className={`
-                px-4 py-1.5 md:px-5 md:py-2 rounded-full border border-white/10 flex items-center gap-3 
+                px-4 py-1.5 sm:px-5 sm:py-2 rounded-full border border-white/10 flex items-center gap-3
                 ${isMobile ? "bg-[#111]" : "bg-white/5 backdrop-blur-md shadow-[0_0_30px_rgba(229,9,20,0.15)]"}
             `}>
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                 </span>
-                <span className="text-[10px] md:text-xs font-bold uppercase tracking-[0.2em] text-white/70">
+                <span className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] text-white/80 whitespace-nowrap">
                     System Online
                 </span>
             </div>
           </motion.div>
 
-          {/* MAIN TITLE (3D only on High-End Desktop) */}
+          {/* MAIN TITLE - Fluid scaling */}
           <motion.div 
             variants={itemVariants}
             style={isMobile ? undefined : { rotateX, rotateY, x: textX }} 
-            className={`text-center flex flex-col items-center mb-6 md:mb-10 ${!isMobile ? "transform-style-3d will-change-transform" : ""}`}
+            className={`text-center flex flex-col items-center mb-6 sm:mb-8 md:mb-10 ${!isMobile ? "transform-style-3d will-change-transform" : ""}`}
           >
-            <h1 className="text-[clamp(3.5rem,11vw,9rem)] font-black leading-[0.9] tracking-tighter uppercase text-white select-none mix-blend-difference drop-shadow-2xl">
+            {/* Clamp ensures text never breaks awkwardly on Galaxy Fold or iPhone SE */}
+            <h1 className="text-[clamp(2.8rem,11vw,8.5rem)] font-black leading-[0.9] tracking-tighter uppercase text-white select-none mix-blend-difference drop-shadow-2xl">
                 Digital
             </h1>
-            <h1 className="relative text-[clamp(3.5rem,11vw,9rem)] font-black leading-[0.9] tracking-tighter uppercase select-none">
+            <h1 className="relative text-[clamp(2.8rem,11vw,8.5rem)] font-black leading-[0.9] tracking-tighter uppercase select-none pb-2">
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ff5722] via-[#E50914] to-[#8a040b] bg-[length:200%_auto] animate-gradient">
                     <ScrambleText text="REALITY" />
                 </span>
-                
-                {/* Reflection effect - Disabled on Mobile */}
                 {!isMobile && (
-                    <span className="absolute inset-0 text-transparent bg-clip-text bg-gradient-to-b from-white/10 to-transparent blur-sm opacity-50 pointer-events-none">
+                    <span className="absolute inset-0 text-transparent bg-clip-text bg-gradient-to-b from-white/10 to-transparent blur-sm opacity-50 pointer-events-none translate-y-1">
                         REALITY
                     </span>
                 )}
             </h1>
           </motion.div>
 
-          {/* SUBTEXT */}
+          {/* SUBTEXT - Responsive width & Balance */}
           <motion.p 
               variants={itemVariants} 
-              className="text-white/60 text-sm md:text-lg max-w-[90%] md:max-w-xl text-center leading-relaxed font-light text-balance tracking-wide mb-10 md:mb-12"
+              className="text-white/60 text-sm sm:text-base md:text-xl max-w-[90%] sm:max-w-lg md:max-w-2xl text-center leading-relaxed font-light tracking-wide mb-10 sm:mb-12 md:mb-16 text-pretty"
           >
-              We engineer digital experiences where <span className="text-white font-bold">Precision</span> meets <span className="text-white font-bold">Chaos</span>. 
+              We engineer digital experiences where <span className="text-white font-semibold">Precision</span> meets <span className="text-white font-semibold">Chaos</span>. 
               Full-stack mastery for the bold.
           </motion.p>
 
-          {/* BUTTONS */}
-          <motion.div variants={itemVariants} className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto px-8 sm:px-0 mb-16">
+          {/* BUTTONS - Stack on mobile, Row on desktop */}
+          <motion.div variants={itemVariants} className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto px-4 sm:px-0">
               
               <MagneticButton 
                   onClick={() => scrollToSection('work')}
-                  className="w-full sm:w-auto group relative px-8 py-4 rounded-full bg-white text-black font-black uppercase tracking-widest text-[11px] overflow-hidden transition-transform active:scale-95"
+                  className="w-full sm:w-auto group relative px-8 py-4 rounded-full bg-white text-black font-black uppercase tracking-widest text-[11px] sm:text-xs overflow-hidden transition-transform active:scale-95"
               >
-                  <span className="relative z-10 flex items-center justify-center gap-3 group-hover:text-[#E50914] transition-colors duration-300">
+                  <span className="relative z-10 flex items-center justify-center gap-2 group-hover:text-[#E50914] transition-colors duration-300">
                       View Our Work <ArrowUpRight className="w-4 h-4" />
                   </span>
-                  {/* Hover effect removed for mobile touch targets */}
                   {!isMobile && (
                       <div className="absolute inset-0 bg-black translate-y-[100%] group-hover:translate-y-0 transition-transform duration-300 ease-in-out" />
                   )}
                   {!isMobile && (
-                      <span className="absolute inset-0 z-10 flex items-center justify-center gap-3 text-white translate-y-[100%] group-hover:translate-y-0 transition-transform duration-300 ease-in-out">
+                      <span className="absolute inset-0 z-10 flex items-center justify-center gap-2 text-white translate-y-[100%] group-hover:translate-y-0 transition-transform duration-300 ease-in-out">
                           View Our Work <ArrowUpRight className="w-4 h-4" />
                       </span>
                   )}
@@ -265,8 +257,8 @@ export default function Hero() {
               <MagneticButton 
                   onClick={() => scrollToSection('contact')}
                   className={`
-                    w-full sm:w-auto px-8 py-4 rounded-full border border-white/20 text-white font-black uppercase tracking-widest text-[11px] transition-all flex items-center justify-center gap-2 group active:scale-95
-                    ${isMobile ? "bg-black" : "bg-white/5 backdrop-blur-sm hover:bg-white/10 hover:border-white/50"}
+                    w-full sm:w-auto px-8 py-4 rounded-full border border-white/20 text-white font-black uppercase tracking-widest text-[11px] sm:text-xs transition-all flex items-center justify-center gap-2 group active:scale-95
+                    ${isMobile ? "bg-black/40 backdrop-blur-md" : "bg-white/5 backdrop-blur-sm hover:bg-white/10 hover:border-white/50"}
                   `}
               >
                   Start a Project <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -274,24 +266,26 @@ export default function Hero() {
 
           </motion.div>
 
-          {/* SCROLL INDICATOR (Only visible if space permits) */}
-          <motion.div 
-            variants={itemVariants}
-            className="hidden md:flex flex-col items-center gap-4 cursor-pointer hover:opacity-80 transition-opacity"
-            onClick={() => scrollToSection('services')}
-          >
-             <div className="w-[30px] h-[50px] rounded-full border-2 border-white/20 flex justify-center pt-2 bg-transparent">
-                 <motion.div 
-                   animate={{ y: [0, 12, 0] }} 
-                   transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                   className="w-1.5 h-1.5 rounded-full bg-[#E50914]"
-                 />
-             </div>
-          </motion.div>
-
       </motion.div>
       
-      {/* CSS Styles for GPU Performance */}
+      {/* SCROLL INDICATOR - Properly Spaced */}
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1, duration: 1 }}
+        className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+        onClick={() => scrollToSection('services')}
+      >
+         <div className="w-[26px] h-[42px] sm:w-[30px] sm:h-[50px] rounded-full border-2 border-white/20 flex justify-center pt-2 bg-transparent shadow-lg shadow-black/20">
+             <motion.div 
+               animate={{ y: [0, 8, 0] }} 
+               transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+               className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-[#E50914]"
+             />
+         </div>
+      </motion.div>
+
+      {/* Global CSS Logic */}
       <style jsx global>{`
         @keyframes gradient {
           0% { background-position: 0% 50%; }
@@ -301,20 +295,22 @@ export default function Hero() {
         .animate-gradient {
           background-size: 200% auto;
           animation: gradient 4s ease infinite;
-          will-change: background-position; /* GPU Hint */
         }
-        
-        /* Simple transform animation - 
-           Much lighter than changing top/left/width/height 
-        */
         @keyframes blob {
             0% { transform: translate(0px, 0px) scale(1); }
-            33% { transform: translate(20px, -30px) scale(1.05); }
-            66% { transform: translate(-10px, 10px) scale(0.95); }
+            33% { transform: translate(15px, -20px) scale(1.02); }
+            66% { transform: translate(-10px, 10px) scale(0.98); }
             100% { transform: translate(0px, 0px) scale(1); }
         }
         .animate-blob {
             animation: blob 15s infinite ease-in-out;
+        }
+        .transform-style-3d {
+          transform-style: preserve-3d;
+        }
+        /* Fix for balance text */
+        .text-pretty {
+            text-wrap: pretty;
         }
       `}</style>
     </section>

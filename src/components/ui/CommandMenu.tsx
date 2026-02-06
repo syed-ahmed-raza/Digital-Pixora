@@ -15,24 +15,36 @@ export default function CommandMenu() {
         e.preventDefault();
         setOpen((open) => !open);
       }
+      if (e.key === "Escape") {
+        setOpen(false);
+      }
     };
     document.addEventListener("keydown", down);
     return () => document.removeEventListener("keydown", down);
   }, []);
 
-  // 2. Navigation Helper
+  // 2. Scroll Lock Logic (Prevent background scrolling)
+  useEffect(() => {
+      if (open) {
+          document.body.style.overflow = "hidden";
+      } else {
+          document.body.style.overflow = "unset";
+      }
+      return () => { document.body.style.overflow = "unset"; };
+  }, [open]);
+
+  // 3. Navigation Helper
   const handleNavigation = (id: string) => {
     setOpen(false);
     const element = document.getElementById(id);
     if (element) {
       element.scrollIntoView({ behavior: "smooth" });
     } else {
-      // Agar wo page par nahi hai to top par scroll kar do fallback ke liye
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
-  // 3. Copy Email Action
+  // 4. Copy Email Action
   const copyEmail = () => {
     navigator.clipboard.writeText("hellodigitalpixora@gmail.com");
     setOpen(false);
