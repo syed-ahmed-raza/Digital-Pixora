@@ -15,6 +15,18 @@ interface SpeechRecognitionState {
   support: boolean;
 }
 
+// --- 🔊 GLOBAL AUDIO CONTEXT (Singleton for Stability) ---
+let audioCtx: AudioContext | null = null;
+
+const getAudioContext = () => {
+    if (typeof window === "undefined") return null;
+    if (!audioCtx) {
+        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioContext) audioCtx = new AudioContext();
+    }
+    return audioCtx;
+};
+
 export const useSpeechRecognition = (): SpeechRecognitionState => {
   // --- STATE ---
   const [isListening, setIsListening] = useState(false);
@@ -27,9 +39,10 @@ export const useSpeechRecognition = (): SpeechRecognitionState => {
   // --- REFS ---
   const recognitionRef = useRef<any>(null);
   const silenceTimer = useRef<NodeJS.Timeout | null>(null);
-  const speakingTimer = useRef<NodeJS.Timeout | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
+  const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null); // 🔒 Added for Cleanup
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
   const wakeLockRef = useRef<any>(null);
 
   // --- 1. COMPATIBILITY CHECK ---
@@ -46,7 +59,7 @@ export const useSpeechRecognition = (): SpeechRecognitionState => {
     }
   }, []);
 
-  // --- 3. WAKE LOCK (Keep screen on while listening) ---
+  // --- 3. WAKE LOCK (Prevents Sleep) ---
   const toggleWakeLock = async (active: boolean) => {
     try {
       if (active && 'wakeLock' in navigator && !wakeLockRef.current) {
@@ -58,88 +71,90 @@ export const useSpeechRecognition = (): SpeechRecognitionState => {
     } catch (err) { /* Silent fail */ }
   };
 
-  // --- 4. AUDIO VISUALIZER (Natural VAD) ---
+  // --- 4. HIGH-PERFORMANCE AUDIO VISUALIZER (60 FPS) ---
+  const updateVisualizer = () => {
+      if (!analyserRef.current || !isListening) return;
+
+      const array = new Uint8Array(analyserRef.current.frequencyBinCount);
+      analyserRef.current.getByteFrequencyData(array);
+
+      // Calculate RMS (Root Mean Square) for accurate volume
+      let sum = 0;
+      for (let i = 0; i < array.length; i++) {
+          sum += array[i] * array[i];
+      }
+      const rms = Math.sqrt(sum / array.length);
+      
+      // Normalize to 0-100 range with sensitivity boost
+      const normalizedVal = Math.min(100, Math.round((rms / 128) * 100 * 1.5)); 
+      
+      // Noise Gate: Ignore tiny background hum
+      const finalLevel = normalizedVal < 5 ? 0 : normalizedVal;
+      
+      setAudioLevel(finalLevel);
+      setIsSpeaking(finalLevel > 15); // Voice Activity Detection Threshold
+
+      animationFrameRef.current = requestAnimationFrame(updateVisualizer);
+  };
+
   const startAudioAnalysis = async () => {
     try {
-      // Cleanup previous instances if any
-      stopAudioAnalysis();
+      stopAudioAnalysis(); // Safety Cleanup
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaStreamRef.current = stream;
       
-      const AudioContextClass = (window.AudioContext || (window as any).webkitAudioContext);
-      const audioContext = new AudioContextClass();
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      if (ctx.state === 'suspended') await ctx.resume();
+
+      const analyser = ctx.createAnalyser();
+      analyser.smoothingTimeConstant = 0.85; // Smoother animations
+      analyser.fftSize = 256; // Faster processing
+
+      const source = ctx.createMediaStreamSource(stream);
+      source.connect(analyser);
       
-      // Resume context if suspended (Chrome policy)
-      if (audioContext.state === 'suspended') {
-        await audioContext.resume();
-      }
+      // 🔒 LOCK: Store references for proper disconnect
+      sourceRef.current = source;
+      analyserRef.current = analyser;
+      
+      // Start the 60FPS loop
+      updateVisualizer();
 
-      const analyser = audioContext.createAnalyser();
-      const microphone = audioContext.createMediaStreamSource(stream);
-      const scriptProcessor = audioContext.createScriptProcessor(2048, 1, 1);
-
-      analyser.smoothingTimeConstant = 0.8; 
-      analyser.fftSize = 512;
-
-      microphone.connect(analyser);
-      analyser.connect(scriptProcessor);
-      scriptProcessor.connect(audioContext.destination);
-
-      scriptProcessor.onaudioprocess = () => {
-        const array = new Uint8Array(analyser.frequencyBinCount);
-        analyser.getByteFrequencyData(array);
-        
-        let sum = 0;
-        for (let i = 0; i < array.length; i++) {
-          sum += array[i] * array[i];
-        }
-        const rms = Math.sqrt(sum / array.length);
-        // Smoother scaling for visualizer
-        const normalizedVal = Math.min(100, Math.round((rms / 100) * 100)); 
-        
-        // Noise Gate (Below 5 is silence)
-        const squelchedVal = normalizedVal < 5 ? 0 : normalizedVal;
-        setAudioLevel(squelchedVal);
-
-        // Simple Voice Detection
-        if (squelchedVal > 10) {
-            setIsSpeaking(true);
-            if (speakingTimer.current) clearTimeout(speakingTimer.current);
-            speakingTimer.current = setTimeout(() => setIsSpeaking(false), 500); 
-        }
-      };
-
-      audioContextRef.current = audioContext;
     } catch (e) {
-      console.warn("Audio analysis failed", e);
-      // Don't block speech recognition if visualizer fails
+      console.warn("Visualizer Init Failed", e);
     }
   };
 
   const stopAudioAnalysis = () => {
-    if (audioContextRef.current) {
-        audioContextRef.current.close().catch(() => {});
-        audioContextRef.current = null;
+    if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+    }
+    // 🔒 CLEANUP: Disconnect Source Node
+    if (sourceRef.current) {
+        sourceRef.current.disconnect();
+        sourceRef.current = null;
     }
     if (mediaStreamRef.current) {
         mediaStreamRef.current.getTracks().forEach(track => track.stop());
         mediaStreamRef.current = null;
     }
+    analyserRef.current = null;
     setAudioLevel(0);
     setIsSpeaking(false);
   };
 
-  // --- 5. SPEECH RECOGNITION LOGIC ---
+  // --- 5. SPEECH RECOGNITION CORE ---
   const startListening = useCallback((lang: string = "en-US") => {
     if (!support || isListening) return;
 
-    // Stop bot from speaking if user interrupts
     if (typeof window !== "undefined" && window.speechSynthesis) window.speechSynthesis.cancel();
 
     toggleWakeLock(true);
     startAudioAnalysis();
-    triggerHaptic([15]); 
+    triggerHaptic([20]); 
 
     const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
     const recognition = new SpeechRecognition();
@@ -156,7 +171,7 @@ export const useSpeechRecognition = (): SpeechRecognitionState => {
     };
 
     recognition.onresult = (event: any) => {
-      // Auto-stop after silence (Friendly UX)
+      // Auto-stop after 4s silence
       if (silenceTimer.current) clearTimeout(silenceTimer.current);
       silenceTimer.current = setTimeout(() => {
         if (recognitionRef.current) recognitionRef.current.stop();
@@ -168,51 +183,33 @@ export const useSpeechRecognition = (): SpeechRecognitionState => {
       for (let i = event.resultIndex; i < event.results.length; ++i) {
         const result = event.results[i];
         const rawText = result[0].transcript;
-        const lowerText = rawText.toLowerCase().trim();
         
-        // Voice Commands
-        const clearCommands = ["delete all", "clear chat", "reset", "start over"];
-        const stopCommands = ["stop listening", "abort", "cancel voice"];
+        if (result.isFinal) finalChunk += rawText;
+        else interimChunk += rawText;
+      }
 
-        if (clearCommands.some(cmd => lowerText.includes(cmd))) {
-            setTranscript("");
-            setInterimTranscript("");
-            triggerHaptic([30]);
-            toast.success("Transcript cleared", { 
-                style: { background: '#000', color: '#fff', border: '1px solid #333' } 
-            });
-            return;
-        }
-        
-        if (stopCommands.some(cmd => lowerText === cmd)) {
-            stopListening();
-            return;
-        }
-
-        if (result.isFinal) {
-          finalChunk += rawText;
-        } else {
-          interimChunk += rawText;
-        }
+      // Voice Command: "Clear" or "Reset"
+      if (finalChunk.toLowerCase().includes("clear chat") || finalChunk.toLowerCase().includes("reset")) {
+          setTranscript("");
+          triggerHaptic([50]);
+          return;
       }
 
       if (finalChunk) {
         setTranscript((prev) => {
             const cleanPrev = prev.trim();
             const cleanNew = finalChunk.trim();
-            // Capitalize first letter
-            const polishedNew = cleanNew.charAt(0).toUpperCase() + cleanNew.slice(1);
-            return cleanPrev ? `${cleanPrev} ${polishedNew}` : polishedNew;
+            // Intelligent Capitalization
+            const polished = cleanNew.charAt(0).toUpperCase() + cleanNew.slice(1);
+            return cleanPrev ? `${cleanPrev} ${polished}` : polished;
         });
       }
       setInterimTranscript(interimChunk);
     };
 
     recognition.onerror = (event: any) => {
-      if (event.error === "no-speech") return;
       if (event.error === "not-allowed") {
-          toast.error("Please allow microphone access.", {
-             icon: '🎙️',
+          toast.error("Microphone Access Denied", {
              style: { background: '#000', color: '#fff', border: '1px solid #E50914' }
           });
           stopListening();
@@ -225,7 +222,7 @@ export const useSpeechRecognition = (): SpeechRecognitionState => {
       setInterimTranscript("");
       stopAudioAnalysis();
       toggleWakeLock(false);
-      triggerHaptic([10]);
+      triggerHaptic([10, 10]);
     };
 
     try { recognition.start(); } catch (e) {}
@@ -243,7 +240,7 @@ export const useSpeechRecognition = (): SpeechRecognitionState => {
     setInterimTranscript("");
   }, []);
 
-  // Cleanup
+  // Cleanup on Unmount
   useEffect(() => {
     return () => {
       if (recognitionRef.current) recognitionRef.current.stop();

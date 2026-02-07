@@ -13,14 +13,19 @@
     @apply h-full w-full;
     scroll-behavior: manual !important;
     -webkit-tap-highlight-color: transparent;
+    /* Mobile text size adjustment fix */
+    -webkit-text-size-adjust: 100%; 
   }
 
   body {
-    @apply bg-[#020202] text-white min-h-screen w-full;
+    @apply bg-[#020202] text-white w-full;
+    min-height: 100vh; /* Fallback */
+    min-height: 100dvh; /* Modern Mobile Fix */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
-    overflow-x: hidden;
+    overflow-x: hidden; /* Critical for mobile responsiveness */
+    overscroll-behavior-y: none; /* Prevents bounce effect on Mac/iOS */
   }
 
   ::selection {
@@ -29,6 +34,7 @@
     text-shadow: 0 0 10px rgba(229, 9, 20, 0.5);
   }
 
+  /* Desktop Styles */
   @media (min-width: 1024px) {
     body, html, a, button, [role="button"] { cursor: none !important; }
     input, textarea, [contenteditable="true"] { cursor: text !important; }
@@ -38,9 +44,15 @@
     ::-webkit-scrollbar-thumb:hover { background: #E50914; }
   }
 
+  /* Mobile/Tablet Styles */
   @media (max-width: 1023px) {
     ::-webkit-scrollbar { display: none; width: 0px; }
     * { -ms-overflow-style: none; scrollbar-width: none; }
+    
+    /* Ensure inputs are easily tappable on mobile */
+    input, textarea, button {
+        font-size: 16px !important; /* Prevents auto-zoom on iPhone */
+    }
   }
 }
 
@@ -53,7 +65,6 @@
   
   .text-balance { text-wrap: balance; }
 
-  
   @keyframes scrollVertical {
     0% { transform: translateY(0); }
     100% { transform: translateY(-50%); }
@@ -66,9 +77,13 @@
   .run-vertical-scroll:hover {
     animation-play-state: paused;
   }
+  
+  /* Safe Area Utilities for Notches */
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+  .pt-safe { padding-top: env(safe-area-inset-top); }
 }
 
-/* LENIS */
+/* LENIS CONFIGURATION */
 html.lenis, html.lenis body { height: auto; }
 .lenis.lenis-smooth { scroll-behavior: auto !important; }
 .lenis.lenis-stopped { overflow: hidden; }

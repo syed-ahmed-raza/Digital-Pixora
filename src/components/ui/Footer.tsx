@@ -10,13 +10,18 @@ import {
   useVelocity, 
   useAnimationFrame 
 } from "framer-motion";
-import { wrap } from "@motionone/utils";
 import { ArrowUp, ArrowUpRight, Instagram, Linkedin, Twitter, Radio, Clock, Command } from "lucide-react";
 
-// ✅ IMPORT COMMAND MENU (Assuming this handles the actual menu UI)
+// ✅ IMPORT COMMAND MENU (Make sure this component exists, or remove if not needed)
 import CommandMenu from "@/components/ui/CommandMenu";
 
-// --- 1. LIVE CLOCK COMPONENT (Hydration Safe) ---
+// --- 🛠️ UTILITY: Wrap Function (Dependency-Free) ---
+const wrap = (min: number, max: number, v: number) => {
+  const rangeSize = max - min;
+  return ((((v - min) % rangeSize) + rangeSize) % rangeSize) + min;
+};
+
+// --- 1. LIVE CLOCK COMPONENT (Hydration Safe - PKT Fixed) ---
 const LiveClock = () => {
     const [time, setTime] = useState<string>("--:--:--");
     const [mounted, setMounted] = useState(false);
@@ -26,7 +31,7 @@ const LiveClock = () => {
         const updateTime = () => {
             const now = new Date();
             const options: Intl.DateTimeFormatOptions = { 
-                timeZone: 'Asia/Karachi', 
+                timeZone: 'Asia/Karachi', // 🔥 Locked to HQ Time
                 hour: '2-digit', 
                 minute: '2-digit', 
                 second: '2-digit',
@@ -92,9 +97,14 @@ function ParallaxText({ children, baseVelocity = 100 }: ParallaxProps) {
 const MagneticSocial = ({ children, href }: { children: React.ReactNode, href: string }) => {
     const ref = useRef<HTMLAnchorElement>(null);
     const [position, setPosition] = useState({ x: 0, y: 0 });
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        setIsMobile(window.innerWidth < 1024);
+    }, []);
 
     const handleMouse = (e: React.MouseEvent) => {
-        if (!ref.current) return;
+        if (!ref.current || isMobile) return; // Disable on mobile
         const { clientX, clientY } = e;
         const { height, width, left, top } = ref.current.getBoundingClientRect();
         // Magnetic Strength: 0.5 (Strong but controlled)
@@ -106,12 +116,12 @@ const MagneticSocial = ({ children, href }: { children: React.ReactNode, href: s
             ref={ref}
             href={href}
             target="_blank"
-            rel="noopener noreferrer" // Security best practice
+            rel="noopener noreferrer" 
             onMouseMove={handleMouse}
             onMouseLeave={() => setPosition({ x: 0, y: 0 })}
             animate={{ x: position.x, y: position.y }}
             transition={{ type: "spring", stiffness: 150, damping: 15, mass: 0.1 }}
-            className="relative w-14 h-14 flex items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/40 hover:text-white hover:border-[#E50914] hover:bg-[#E50914] transition-all duration-300 group cursor-pointer"
+            className="relative w-14 h-14 flex items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/40 hover:text-white hover:border-[#E50914] hover:bg-[#E50914] transition-all duration-300 group cursor-pointer active:scale-95"
         >
             <div className="relative z-10 group-hover:scale-110 transition-transform duration-300">{children}</div>
         </motion.a>
@@ -179,7 +189,7 @@ export default function Footer() {
                          <span className="text-[#E50914] text-[10px] font-black uppercase tracking-widest">System Online</span>
                       </div>
                       
-                      <h2 className="text-[clamp(4rem,10vw,6rem)] font-black text-white uppercase tracking-tighter leading-[0.8]">
+                      <h2 className="text-[clamp(3.5rem,10vw,6rem)] font-black text-white uppercase tracking-tighter leading-[0.8]">
                           Digital <br/>
                           <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-white/20">
                             Pixora.
@@ -252,7 +262,7 @@ export default function Footer() {
 
           {/* BOTTOM BAR */}
           <div className="flex flex-col-reverse md:flex-row justify-between items-center gap-6 pt-12">
-              <p className="text-white/20 text-[10px] font-bold uppercase tracking-widest">
+              <p className="text-white/20 text-[10px] font-bold uppercase tracking-widest text-center md:text-left">
                 © {year || "----"} Digital Pixora. All Rights Reserved.
               </p>
               

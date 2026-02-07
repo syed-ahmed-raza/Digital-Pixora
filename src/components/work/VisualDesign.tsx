@@ -76,7 +76,7 @@ const VaultCard = ({ item, onClick, index }: { item: any, onClick: () => void, i
                 rotateY, 
                 transformStyle: "preserve-3d" 
             }}
-            className="group relative flex-shrink-0 cursor-pointer snap-center rounded-[2rem] bg-[#0a0a0a] border border-white/5 w-[85vw] sm:w-[60vw] md:w-[35vw] lg:w-[28vw] aspect-[4/5] md:aspect-[3/4] lg:aspect-square overflow-hidden perspective-1000 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] will-change-transform"
+            className="group relative flex-shrink-0 cursor-pointer snap-center rounded-[2rem] bg-[#0a0a0a] border border-white/5 w-[85vw] sm:w-[60vw] md:w-[35vw] lg:w-[28vw] aspect-[4/5] md:aspect-[3/4] lg:aspect-square overflow-hidden perspective-1000 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] will-change-transform active:scale-[0.98] transition-all"
         >
             {/* 🌟 1. BACKGROUND GLOW */}
             <div 
@@ -105,8 +105,9 @@ const VaultCard = ({ item, onClick, index }: { item: any, onClick: () => void, i
                                    opacity-80 group-hover:opacity-100 
                                    object-contain drop-shadow-2xl 
                                    grayscale group-hover:grayscale-0 
-                                   group-hover:scale-[1.1] z-10"
+                                   group-hover:scale-[1.1] z-10 select-none"
                         style={{ transform: "translateZ(20px)" }} 
+                        draggable={false}
                       />
                  </div>
             </div>
@@ -205,10 +206,11 @@ const AdvancedLightbox = ({ item, onClose }: { item: any, onClose: () => void })
                                         alt={item.title} 
                                         width={1800}
                                         height={1800}
-                                        className={`w-auto h-auto max-w-full max-h-[80vh] object-contain drop-shadow-[0_0_50px_rgba(0,0,0,0.8)] ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+                                        className={`w-auto h-auto max-w-full max-h-[80vh] object-contain drop-shadow-[0_0_50px_rgba(0,0,0,0.8)] ${imgLoaded ? 'opacity-100' : 'opacity-0'} select-none`}
                                         onLoad={() => setImgLoaded(true)}
                                         unoptimized // 🔥 High Quality for Zoom
                                         priority
+                                        draggable={false} // Prevent Ghost Dragging
                                     />
                                 </motion.div>
                             </TransformComponent>
@@ -256,7 +258,7 @@ export default function VisualDesign() {
       // Safety Check
       if (!totalWidth || !triggerRef.current) return;
       
-      const xMove = -(totalWidth - windowWidth + 200); 
+      const xMove = -(totalWidth - windowWidth + 100); 
       
       gsap.to(sectionRef.current, {
         x: xMove,
@@ -309,9 +311,10 @@ export default function VisualDesign() {
 
         {/* CARDS CONTAINER (Draggable/Scrollable) */}
         {/* ⚡ Added will-change-transform for smooth horizontal scroll */}
+        {/* 🛠️ FIX: Mobile Snap Physics - overscroll-x-contain prevents page navigation gestures */}
         <div 
           ref={sectionRef} 
-          className="flex flex-row items-center gap-6 md:gap-10 px-6 lg:pl-[10vw] overflow-x-auto lg:overflow-visible pb-12 lg:pb-0 snap-x snap-mandatory lg:snap-none no-scrollbar will-change-transform"
+          className="flex flex-row items-center gap-6 md:gap-10 px-6 lg:pl-[10vw] overflow-x-auto lg:overflow-visible pb-12 lg:pb-0 snap-x snap-mandatory lg:snap-none no-scrollbar will-change-transform overscroll-x-contain"
         >
           {/* DESKTOP HEADER (Scrolls with cards) */}
           <div className="hidden lg:flex flex-col justify-center min-w-[30vw] flex-shrink-0 mr-16 z-20 self-center">

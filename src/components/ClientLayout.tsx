@@ -27,9 +27,11 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const [isDesktop, setIsDesktop] = useState(false);
   const lenisRef = useRef<any>(null);
 
-  // --- 1. DEVICE DETECTION ---
+  // --- 1. ROBUST DEVICE DETECTION ---
   useEffect(() => {
-    const checkScreen = () => setIsDesktop(window.innerWidth > 1024);
+    const checkScreen = () => {
+        setIsDesktop(window.innerWidth > 1024);
+    };
     checkScreen();
     
     let resizeTimer: NodeJS.Timeout;
@@ -51,15 +53,34 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     };
   }, []);
 
-  // --- 2. GSAP + LENIS SYNC ---
+  // --- 2. GSAP + LENIS SYNC (THE GLUE) ---
   useEffect(() => {
     const update = (time: number) => {
       lenisRef.current?.lenis?.raf(time * 1000);
     };
+
+    // 🔥 CRITICAL: Sync ScrollTrigger with Lenis
+    // Iske bina Sticky elements vibrate karenge.
+    const syncScroll = () => ScrollTrigger.update();
+
+    // Bind GSAP Ticker
     gsap.ticker.add(update);
     gsap.ticker.lagSmoothing(0); 
 
-    return () => gsap.ticker.remove(update);
+    // Bind ScrollTrigger Update
+    // Hum wait karte hain lenis instance ready hone ka
+    const interval = setInterval(() => {
+        if (lenisRef.current?.lenis) {
+            lenisRef.current.lenis.on('scroll', syncScroll);
+            clearInterval(interval);
+        }
+    }, 100);
+
+    return () => {
+      gsap.ticker.remove(update);
+      lenisRef.current?.lenis?.off('scroll', syncScroll);
+      clearInterval(interval);
+    };
   }, []);
 
   // --- 3. PRELOADER & SCROLL LOGIC ---
@@ -69,15 +90,16 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       if (lenisRef.current?.lenis) lenisRef.current.lenis.stop();
     } else {
       document.body.style.overflow = "";
-      window.scrollTo(0, 0);
       
-      if (lenisRef.current?.lenis) lenisRef.current.lenis.start();
+      if (lenisRef.current?.lenis) {
+          lenisRef.current.lenis.start();
+          lenisRef.current.lenis.scrollTo(0, { immediate: true });
+      }
 
       // Force Refresh after Layout Shift to ensure Sticky elements work
       setTimeout(() => {
-        lenisRef.current?.lenis?.resize();
         ScrollTrigger.refresh();
-      }, 200);
+      }, 1000); 
     }
   }, [isLoading]);
 
@@ -85,28 +107,17 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     <ReactLenis 
       ref={lenisRef}
       root 
-      autoRaf={false} 
+      autoRaf={false} // We drive via GSAP ticker
       options={{ 
-        // 💎 ULTRA-PREMIUM SCROLL SETTINGS 💎
-        
-        // 1. Smoothness (Lower = Heavy/Creamy, Higher = Snappy)
+        // 💎 GOLD TIER SCROLL SETTINGS
         lerp: 0.07, 
-        
-        // 2. Duration: Kitni dair tak scroll momentum rahega
         duration: 1.5, 
-        
-        // 3. Wheel (Desktop Mouse)
         smoothWheel: true,
-        wheelMultiplier: 0.9, // Thoda sa weight diya taake fast na bhage
+        wheelMultiplier: 0.9, 
         
-        // 4. 🔥 MOBILE FIX (Most Important)
-        // Pehle '2' tha, isliye tez tha. '0.65' se finger movement controlled feel hogi.
-        touchMultiplier: isDesktop ? 1 : 0.65, 
-        
-        // 5. Mobile Smoothness Force Enable
+        // 🔥 MOBILE FIX
+        touchMultiplier: isDesktop ? 1 : 1.5, 
         syncTouch: true,
-        
-        // 6. Infinite Scroll Disable
         infinite: false,
       }}
     >
@@ -121,7 +132,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       <AnimatePresence mode="wait">
         {isLoading && (
             <div className="relative z-[99999]">
-                <Preloader onComplete={() => setIsLoading(false)} />
+              <Preloader onComplete={() => setIsLoading(false)} />
             </div>
         )}
       </AnimatePresence>
@@ -132,8 +143,10 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         {!isLoading && (
             <>
                 {isDesktop && <Cursor />}
-                <div className="relative z-[9999]">
-                   <ChatWidget />
+                
+                {/* 🔥 CRITICAL FIX: data-lenis-prevent */}
+                <div className="relative z-[9999]" data-lenis-prevent>
+                    <ChatWidget />
                 </div>
             </>
         )}
@@ -145,7 +158,10 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         {/* Global Notifications */}
         <Toaster 
             position="bottom-center" 
-            containerStyle={{ zIndex: 99999 }} 
+            containerStyle={{ 
+                zIndex: 99999,
+                bottom: '40px' 
+            }} 
             toastOptions={{
                 className: 'backdrop-blur-xl border border-white/10 shadow-2xl',
                 style: {

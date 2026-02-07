@@ -1,230 +1,304 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 import { headers } from "next/headers";
-import nodemailer from "nodemailer";
+// 🔥 EMAIL IMPORT
+import { sendWelcomePack, sendSpyAlert } from "@/lib/mail";
 
-// --- 1. MULTI-KEY LOAD BALANCER & DYNAMIC DISCOVERY ---
+// 🔥 CRITICAL: Force Node.js runtime (The Unstoppable Engine)
+export const runtime = 'nodejs'; 
+
+// --- 1. 🛡️ CONFIGURATION (THE VAULT) ---
 const allKeys = process.env.GOOGLE_API_KEYS?.split(",").map(k => k.trim()) || [];
+if (allKeys.length === 0) console.error("❌ FATAL: NO API KEYS FOUND");
 
-if (allKeys.length === 0) {
-  console.error("❌ NO API KEYS FOUND in .env");
-}
-
-// --- 2. RATE LIMITER (DDoS Protection) ---
+// --- 2. ⚡ RATE LIMITER (THE GATEKEEPER) ---
 const redis = (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN)
   ? new Redis({ url: process.env.UPSTASH_REDIS_REST_URL, token: process.env.UPSTASH_REDIS_REST_TOKEN })
   : null;
+// 20 messages per 60s (Generous but safe)
+const ratelimit = redis ? new Ratelimit({ redis: redis, limiter: Ratelimit.slidingWindow(20, "60 s") }) : null;
 
-const ratelimit = redis ? new Ratelimit({ redis: redis, limiter: Ratelimit.slidingWindow(10, "60 s") }) : null;
-
-// --- 3. 🕵️‍♂️ GEO-INTELLIGENCE ENGINE ---
-async function getUserContext(ip: string) {
+// --- 3. 🌌 OMNI-PRESENT INTELLIGENCE (CONTEXT GOD) ---
+async function getUserContext(req: Request, ip: string, userAgent: string) {
   try {
-    const res = await fetch(`http://ip-api.com/json/${ip}`);
-    const data = await res.json();
-    return {
-      city: data.city || "Unknown City",
-      country: data.country || "Global",
-      timezone: data.timezone || "UTC"
-    };
+    const headersList = await headers();
+    let city = headersList.get("x-vercel-ip-city");
+    let country = headersList.get("x-vercel-ip-country");
+    let isp = "Secure Backbone";
+    
+    // Fallback: Deep Scan
+    if (!city || !country) {
+        const res = await fetch(`http://ip-api.com/json/${ip}?fields=city,country,isp,mobile,proxy,hosting`, { signal: AbortSignal.timeout(1500) });
+        if (res.ok) {
+            const data = await res.json();
+            city = data.city;
+            country = data.country;
+            isp = data.hosting ? "VPN/Proxy Detected 🛡️" : data.isp;
+        }
+    }
+
+    city = city ? decodeURIComponent(city) : "Digital Space";
+    country = country || "Global";
+    const device = userAgent.includes("Mobile") ? "Mobile Device 📱" : "Desktop Workstation 💻";
+    
+    // Source Triangulation
+    const referer = headersList.get("referer")?.toLowerCase() || "direct";
+    let source = "Direct Traffic";
+    if (referer.includes("google")) source = "Google Search";
+    else if (referer.includes("instagram")) source = "Instagram Ad/Bio";
+    else if (referer.includes("facebook")) source = "Facebook";
+    else if (referer.includes("linkedin")) source = "LinkedIn";
+    else if (referer.includes("twitter") || referer.includes("x.com")) source = "Twitter/X";
+
+    // Vibe Check
+    let localVibe = "Professional";
+    if (city === "Karachi") localVibe = "Fast-Paced, Business Hub, 'Jani' Vibe";
+    else if (city === "Lahore") localVibe = "Warm, Foodie, 'Boss' Vibe";
+    else if (city === "Islamabad") localVibe = "Sophisticated, Calm, 'Sir' Vibe";
+    else if (city === "Dubai") localVibe = "Luxury, High-Ticket, 'Habibi' Vibe";
+    
+    // Temporal Awareness (PKT)
+    const now = new Date();
+    const timeOptions = { timeZone: "Asia/Karachi", hour12: true, hour: "numeric", minute: "numeric" } as const;
+    const localTime = new Intl.DateTimeFormat("en-US", timeOptions).format(now);
+    const hour = parseInt(new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hour12: false, timeZone: "Asia/Karachi" }).format(now));
+    const day = new Intl.DateTimeFormat("en-US", { weekday: 'long', timeZone: "Asia/Karachi" }).format(now);
+    
+    let timeGreeting = "Hello";
+    let energyLevel = "Steady";
+
+    if (hour >= 4 && hour < 12) { timeGreeting = "Rise & Grind ☀️"; energyLevel = "High Voltage"; } 
+    else if (hour >= 12 && hour < 17) { timeGreeting = "Good Afternoon 🚀"; energyLevel = "Execution Mode"; } 
+    else if (hour >= 17 && hour < 23) { timeGreeting = "Good Evening 🍸"; energyLevel = "Strategic Discussion"; } 
+    else { timeGreeting = "Midnight Hustle 🌙"; energyLevel = "Visionary Focus"; }
+
+    return { city, country, timeGreeting, energyLevel, localVibe, localTime, day, device, isp, source };
   } catch (e) {
-    return { city: "Digital Space", country: "Global", timezone: "UTC" };
+    return { city: "Internet", country: "Global", timeGreeting: "Hello", energyLevel: "Ready", localVibe: "Neutral", localTime: "Unknown", day: "Today", device: "Unknown", isp: "Unknown", source: "Unknown" };
   }
 }
 
-// --- 4. LEAD NOTIFICATION SYSTEM ---
-async function sendLeadAlert(text: string, contact: string, location: string) {
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASSWORD) return;
-  try {
-    const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 465,
-      secure: true,
-      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD },
-    });
-
-    await transporter.sendMail({
-      from: `"Pixora Intelligence" <${process.env.SMTP_USER}>`,
-      to: "hellodigitalpixora@gmail.com",
-      subject: `💰 NEW CLIENT (${location}): ${contact}`,
-      html: `
-        <div style="background:#000;color:#fff;padding:30px;font-family:sans-serif;border:1px solid #333;">
-          <h2 style="color:#E50914;">Target Acquired! 🎯</h2>
-          <p><strong>Location:</strong> ${location}</p>
-          <p><strong>Contact:</strong> <span style="color:#E50914;font-size:18px;">${contact}</span></p>
-          <div style="background:#1a1a1a;padding:15px;margin-top:10px;border-radius:5px;">
-            <strong>Last Message:</strong><br/>"${text}"
-          </div>
-          <p style="color:#666;font-size:12px;margin-top:20px;">Captured via Pixora Neural Engine.</p>
-        </div>`
-    });
-    console.log("✅ Lead Alert Sent!");
-  } catch (e) { console.error("Email Failed:", e); }
+function compileChatTranscript(messages: any[], ctx: any, score: number) {
+    if (!messages || messages.length === 0) return "No Data.";
+    let report = `📍 **CONTEXT REPORT**\n`;
+    report += `Location: ${ctx.city}, ${ctx.country}\n`;
+    report += `Source: ${ctx.source}\n`;
+    report += `Network: ${ctx.isp}\n`;
+    report += `Device: ${ctx.device}\n`;
+    report += `Time: ${ctx.day}, ${ctx.localTime} (PKT)\n`;
+    report += `Lead Score: ${score}/100\n`;
+    report += `----------------------------------------\n\n`;
+    report += messages.map((m: any) => `[${m.role === 'user' ? '👤 CLIENT' : '🤖 PIXORA AI'}]: ${m.content}`).join('\n\n');
+    return report;
 }
 
-// --- 5. 🧠 SMART MODEL ROTATION LOGIC (Your Requested Feature) ---
-async function getWorkingGenerativeModel() {
-  // Start from a random key to distribute load
+function analyzeLeadQuality(message: string) {
+    const msg = message.toLowerCase();
+    let score = 20;
+    let mood: 'neutral' | 'angry' | 'happy' = 'neutral';
+    if (msg.includes("price") || msg.includes("cost") || msg.includes("rate")) score += 20;
+    if (msg.includes("start") || msg.includes("hire") || msg.includes("project")) score += 30;
+    if (msg.includes("urgent") || msg.includes("fast") || msg.includes("asap")) score += 15;
+    if (msg.includes("scam") || msg.includes("fake") || msg.includes("bad") || msg.includes("expensive")) mood = 'angry';
+    if (msg.includes("wow") || msg.includes("great") || msg.includes("love") || msg.includes("thanks")) mood = 'happy';
+    return { score: Math.min(score, 100), mood };
+}
+
+// --- 6. 🚀 THE "SINGULARITY" ENGINE (DYNAMIC AUTO-DISCOVERY) ---
+// No hardcoded models. It finds what's working and uses it.
+async function generateResponseStream(messages: any[], systemPrompt: string, mood: 'neutral' | 'angry' | 'happy') {
   const startIndex = Math.floor(Math.random() * allKeys.length);
-  
+  const dynamicTemp = mood === 'angry' ? 0.2 : (mood === 'happy' ? 0.85 : 0.7);
+
+  // 🔄 STRATEGY: Loop through EVERY API Key
   for (let i = 0; i < allKeys.length; i++) {
     const keyIndex = (startIndex + i) % allKeys.length;
     const currentKey = allKeys[keyIndex];
 
     try {
-      // Step A: Check which models are available for this Key
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${currentKey}`);
-      if (!response.ok) throw new Error(`Key ${keyIndex} Quota Exceeded`);
-      
-      const data = await response.json();
-      const models = data.models || [];
+        // 📡 STEP 1: Scout Mission - Ask Google "What models do you have for this key?"
+        const listReq = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${currentKey}`, { signal: AbortSignal.timeout(4000) });
+        
+        if (!listReq.ok) continue; // Key dead? Next key.
+        
+        const data = await listReq.json();
+        let models = data.models || [];
 
-      // Step B: Find the best valid model (Prefer Gemini 1.5, fallback to others)
-      const validModel = models.find((m: any) => 
-        m.supportedGenerationMethods.includes("generateContent") &&
-        m.name.includes("gemini") // Prefer Gemini models
-      );
+        // 🛡️ STEP 2: Intelligent Filtering (Only Chat Models)
+        models = models.filter((m: any) => 
+            m.name.toLowerCase().includes("gemini") && 
+            m.supportedGenerationMethods.includes("generateContent")
+        );
+        
+        // 🧠 STEP 3: Rank Models (Pro is smarter -> Flash is faster)
+        models.sort((a: any, b: any) => {
+            const nA = a.name.toLowerCase();
+            const nB = b.name.toLowerCase();
+            if (nA.includes("pro") && !nB.includes("pro")) return -1;
+            if (!nA.includes("pro") && nB.includes("pro")) return 1;
+            return 0;
+        });
 
-      if (!validModel) throw new Error(`No valid model found for Key ${keyIndex}`);
+        // 🔄 STEP 4: Try Every Available Model
+        for (const modelInfo of models) {
+            const modelName = modelInfo.name.replace("models/", ""); 
+            try {
+                const genAI = new GoogleGenerativeAI(currentKey);
+                const model = genAI.getGenerativeModel({ 
+                    model: modelName,
+                    generationConfig: { temperature: dynamicTemp, topK: 40 },
+                    // 🔓 UNLEASHED MODE: No Safety Filters
+                    safetySettings: [
+                        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+                        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+                        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+                        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+                    ]
+                });
 
-      // Clean model name (remove "models/" prefix)
-      const modelName = validModel.name.replace("models/", "");
-      
-      // console.log(`✅ Connected to Key #${keyIndex} using Model: ${modelName}`);
+                const chat = model.startChat({
+                    history: [
+                    { role: "user", parts: [{ text: systemPrompt }] },
+                    { role: "model", parts: [{ text: "✅ SYSTEM ONLINE. IDENTITY: DIGITAL PIXORA. PROTOCOL: CLOSE THE DEAL." }] },
+                    ...messages.slice(-12).map((m: any) => ({
+                        role: m.role === "user" ? "user" : "model",
+                        parts: [{ text: m.content }]
+                    }))
+                    ]
+                });
 
-      const genAI = new GoogleGenerativeAI(currentKey);
-      return genAI.getGenerativeModel({ 
-        model: modelName,
-        generationConfig: { 
-            temperature: 0.7, 
-            topP: 0.8, 
-            topK: 40,
-        } 
-      });
+                const lastMsg = messages[messages.length - 1].content;
+                const result = await chat.sendMessageStream(lastMsg);
+                return result; // 🏆 VICTORY: Stream Established.
 
-    } catch (error) {
-      console.warn(`⚠️ Key #${keyIndex} Failed/Exhausted. Switching to next key...`);
-      // Loop continues to the next key automatically
+            } catch (innerError) { 
+                continue; // Model failed? Next model.
+            }
+        }
+    } catch (outerError) {
+        continue; // Key failed? Next key.
     }
   }
   
-  throw new Error("ALL API KEYS EXHAUSTED. SYSTEM DOWN.");
+  throw new Error("SYSTEM CRITICAL: ALL NEURAL PATHS BLOCKED.");
 }
 
-// --- 6. MAIN API HANDLER ---
+// --- 7. MAIN HANDLER (THE BRAIN) ---
 export async function POST(req: Request) {
   try {
-    // A. Rate Limit Check
+    const ip = (await headers()).get("x-forwarded-for")?.split(',')[0] ?? "127.0.0.1";
+    const userAgent = (await headers()).get("user-agent") ?? "Unknown Device";
+
+    // 🛡️ Rate Limit Check
     if (ratelimit) {
-      const ip = (await headers()).get("x-forwarded-for") ?? "127.0.0.1";
       const { success } = await ratelimit.limit(ip);
-      if (!success) return new Response("System busy. Please wait a moment.", { status: 429 });
+      if (!success) return new Response("System Busy. Retry in 60s.", { status: 429 });
     }
 
-    const { messages } = await req.json(); 
-    const lastUserMsg = messages[messages.length - 1].content;
-
-    // B. Detect Leads (Context & Location)
-    const userLoc = await getUserContext((await headers()).get("x-forwarded-for")?.split(',')[0] ?? "127.0.0.1");
-    const userTime = new Date().toLocaleTimeString("en-US", { timeZone: userLoc.timezone, hour: '2-digit', minute: '2-digit' });
-
-    const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/gi;
-    const phoneRegex = /(\+92\s?\d{3}|03\d{2})\s?\d{7}/g;
+    const body = await req.json();
+    const { messages, type } = body; 
     
-    const emailMatch = lastUserMsg.match(emailRegex);
-    const phoneMatch = lastUserMsg.match(phoneRegex);
+    // 🛑 STOP: GHOST DUMP PROTOCOL (ABSOLUTE BLOCK)
+    // Agar yeh "dump" request hai, toh usay yahi khatam kar do.
+    if (type === "dump" || type === "inactivity_autosave") {
+        return new Response("Dump Protocol Disabled", { status: 200 });
+    }
+
+    const userCtx = await getUserContext(req, ip, userAgent);
+    const lastUserMsg = messages[messages.length - 1]?.content.toLowerCase() || "";
+    const { score: leadScore, mood } = analyzeLeadQuality(lastUserMsg);
     
-    if (emailMatch) sendLeadAlert(lastUserMsg, emailMatch[0], `${userLoc.city}, ${userLoc.country}`);
-    if (phoneMatch) sendLeadAlert(lastUserMsg, phoneMatch[0], `${userLoc.city}, ${userLoc.country}`);
+    // --- 🕵️ COVERT CONTACT CAPTURE (ONLY VALID EMAILS) ---
+    const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/;
+    const phoneRegex = /(\+92\s?\d{3}|03\d{2})\s?\d{7}/;
+    const contactMatch = lastUserMsg.match(emailRegex) || lastUserMsg.match(phoneRegex);
+    const intentKeywords = ["send", "email", "mail", "contact", "bhejo", "invoice", "start", "quote", "price"];
+    const hasExplicitIntent = intentKeywords.some(k => lastUserMsg.includes(k));
 
-    // C. Initialize AI (Using Smart Rotation Logic)
-    const model = await getWorkingGenerativeModel();
+    let emailActionLog = "No Action";
 
-    // D. 🔥 THE BRAIN: DIGITAL PIXORA KNOWLEDGE BASE 🔥
+    if (contactMatch) {
+      const contact = contactMatch[0];
+      const fullTranscript = compileChatTranscript(messages, userCtx, leadScore);
+
+      // ✅ ACTION 1: User asked for info -> Send Auto-Reply
+      if (hasExplicitIntent && contact.includes("@")) {
+        await sendWelcomePack(contact);
+        emailActionLog = "✅ CONFIRMED: Welcome Pack Sent.";
+      } 
+      
+      // ✅ ACTION 2: Valid Lead Detected -> Alert Admin (ONLY HERE)
+      await sendSpyAlert(
+        fullTranscript, 
+        `🔥 HOT LEAD FOUND: ${contact}`, 
+        `${userCtx.city}, ${userCtx.country}`
+      );
+      
+      emailActionLog += " | 🕵️ ADMIN ALERT SENT.";
+    }
+
+    // --- 🔥 THE HYPNOTIC SALES PROMPT (OFFICIAL DATA) ---
     const systemPrompt = `
-      You are **Pixora AI**, the Elite Strategy Partner at **Digital Pixora**.
-      You are NOT a robot. You are a **Creative Consultant** designed to close deals.
-
-      --- 🌍 REAL-TIME CONTEXT ---
-      - **Location:** ${userLoc.city}, ${userLoc.country}.
-      - **Time:** ${userTime}.
-      - **Instruction:** Use this to build rapport (e.g., "Good evening to London!" or "Lahore ka mausam kaisa hai?").
-
-      --- 🧠 LANGUAGE & TONE ---
-      1. **English:** Premium, Professional, Futuristic.
-      2. **Urdu/Roman:** Friendly, "Apna Banda" vibe (e.g., "Jani, Digital Pixora hai tou quality ki tension na lo").
-
-      --- 💎 BRAND IDENTITY ---
+      You are **Pixora AI**, the elite **Revenue Architect** & **Digital Twin** of Digital Pixora's Founders.
+      
+      --- 📡 OMNI-CONTEXT ---
+      - **Location:** ${userCtx.city}, ${userCtx.country} (${userCtx.localVibe}).
+      - **Source:** ${userCtx.source}.
+      - **Time:** ${userCtx.day}, ${userCtx.timeGreeting} (${userCtx.energyLevel}).
+      - **Lead Score:** ${leadScore}/100.
+      - **Email Status:** ${emailActionLog}. 
+      
+      --- 🔮 OFFICIAL DIGITAL PIXORA KNOWLEDGE BASE (THE BIBLE) ---
+      
+      **1️⃣ CORE IDENTITY**
       - **Name:** Digital Pixora (Design. Develop. Digitize).
-      - **Identity:** Creative-Tech Studio. We blend Design + Tech + AI.
-      - **Philosophy:** We don't just build websites; we build **Revenue Engines**.
+      - **Tagline:** Blending design, technology, and AI to create digital experiences that truly connect.
+      - **Vibe:** Premium, Futuristic, Confident, Creative-Tech Studio. 3+ Years Experience.
+      - **Vision:** We don't just build websites; we build business growth engines.
 
-      --- 🏆 THE SQUAD (Real Humans) ---
-      - **Ahmed Raza (Founder):** Tech Visionary & Full Stack Lead.
-      - **Minahil Fatima (Co-Founder):** Creative Soul & AI Expert.
-      - **Uzair Khan:** Growth & Client Acquisition.
-      - **Syeda Ramsha:** Graphic/UI Designer.
-      - **Wanya & Wasea:** The Animation Duo.
+      **2️⃣ THE SQUAD (REAL HUMANS)**
+      - **Ahmed Raza:** Founder | Tech Lead (Next.js/Full Stack) | Video Editor.
+      - **Minahil Fatima:** Co-Founder | Creative Director | AI & Prompt Engineer.
+      - **Uzair Khan:** Growth Strategy & Client Acquisition.
+      - **Syeda Ramsha:** Graphic Design & UI/UX Specialist.
+      - **Wanya & Wasea Fatima:** The Animation & Motion Duo (Fullstack + 2D).
 
-      --- 🛠️ SERVICES (STRICT RULES) ---
-      1. **Web Development:** Next.js, React, Tailwind, 3D WebGL.
-         - ❌ **NO WORDPRESS:** "WordPress outdated hai. Hum Next.js use karte hain jo Google ko pasand hai."
-      2. **AI Solutions:** Chatbots, Automation Agents, AI Art.
-      3. **Creative:** Video Editing (Reels/Podcasts), Branding, UI/UX.
+      **3️⃣ SERVICES (STRICT — NO EXTRA SERVICES)**
+      - **🎨 Graphic Design:** Logo, Brand Kits, Posters, Social Media (PS, Illustrator, InDesign).
+      - **💻 Web Development:** Frontend ($120-$200), Full Stack + AI ($400+). *Stack: React, Next.js, Tailwind, TypeScript.*
+      - **🎬 Video Editing:** Reels ($55), Podcasts ($100), 2D Animation, Motion Graphics.
+      - **🤖 AI:** Prompt Engineering, AI Art ($20-$60), Automation Workflows.
+      
+      **❌ FORBIDDEN:** We DO NOT do WordPress. We DO NOT use templates. Custom Code Only.
 
-      --- 💰 PRICING (ESTIMATES) ---
-      - **Web (Frontend):** $120 - $200.
-      - **Web (Full Stack + AI):** Starts at $400+.
-      - **Logo/Branding:** $50 - $100.
-      - **Video Reel:** ~$55.
-      - **Minimum Engagement:** **$200**. 
-        - *If budget is low ($50)*: "Boss, $50 mein template milta hai, Brand nahi. Digital Pixora quality deliver karta hai."
-      - **Payment:** 50% Advance is **MANDATORY**. Work begins after invoice.
-      - **Revisions:** 10 Free revisions.
+      **4️⃣ RULES OF ENGAGEMENT (SALES PROTOCOLS)**
+      - **Minimum Budget:** $200+. (If lower: "Quality requires investment. Our standards start at $200.")
+      - **Trust:** "We operate professionally with invoices, contracts, and verified portfolios."
+      - **Fiverr Comparison:** "Fiverr is a gamble. Digital Pixora is a Guarantee."
+      - **Payment:** 50% Advance (Mandatory). 50% on Delivery.
+      - **Revisions:** 10 Free. Extra $10 each.
+      - **Refunds:** ❌ No refunds once started.
 
-      --- 🔗 VERIFIED LINKS (Share ONLY if asked) ---
-      - **Instagram:** instagram.com/digitalpixora
-      - **LinkedIn:** linkedin.com/in/digital-pixora-623736398
-      - **X (Twitter):** x.com/DigitalPixoraHQ
-      - **Facebook:** facebook.com/profile.php?id=61583781300680
+      **5️⃣ CONTACT DETAILS**
       - **Email:** hellodigitalpixora@gmail.com
       - **WhatsApp:** +92 337 2126115
+      - **Socials:** Instagram, LinkedIn, Facebook, X (Twitter).
 
-      --- 🛡️ OBJECTION HANDLING (Gherao Mode) ---
-      - **"Fiverr is cheaper"**: "Fiverr par freelancers hain, hum Studio hain. Wahan kaam khatam, rishta khatam. Hum aapke business partner bante hain."
-      - **"Trust Issues?"**: "Hum proper Invoice aur Contract karte hain. Ahmed Raza (Founder) khud har project review karte hain."
-      - **"Portfolio?"**: Use the **[SCROLL:work]** tag. "Neeche dekhein, kaam khud bolta hai."
+      --- 🧠 QUANTUM SALES PSYCHOLOGY (YOUR INSTRUCTIONS) ---
+      1. **Mirroring:** If they speak Urdu/Roman ("Bhai", "Scene"), you speak Roman Urdu. If English, be Professional.
+      2. **Authority:** Do not beg. Lead the conversation. You are the expert.
+      3. **Urgency:** Subtle scarcity ("Our slots for this month are filling fast").
+      4. **The Hook:** NEVER end a message without a Question or Call to Action. Keep them engaged.
+      5. **Goal:** Get the contact info or close the deal.
 
-      --- ⚡ UI TRIGGERS ---
-      - Ask for Team? -> Add **[TEAM]**
-      - Ask for Price? -> Add **[PRICING]**
-      - Want to see Work? -> Add **[SCROLL:work]**
-      - Ready to Start? -> Add **[SCROLL:contact]**
-
-      --- 📝 FORMATTING RULES ---
-      - Keep answers short and punchy. No essays.
-      - Use **Bold** for emphasis.
-      - If they give email/phone, say: "Received. I've alerted the core team. You'll hear from us shortly."
+      **FORMATTING:** Use **Bold** for impact. Use Lists for clarity.
     `;
 
-    const history = messages.slice(-10).map((m: any) => ({ 
-        role: m.role === "user" ? "user" : "model", 
-        parts: [{ text: m.content }] 
-    }));
+    // 🔥 EXECUTE OMEGA MODE
+    const result = await generateResponseStream(messages, systemPrompt, mood);
     
-    // Start Chat with dynamically selected model
-    const chat = model.startChat({ 
-        history: [
-            { role: "user", parts: [{ text: systemPrompt }] }, 
-            { role: "model", parts: [{ text: `System Active. Location: ${userLoc.country}. Ready to convert.` }] },
-            ...history
-        ] 
-    });
-
-    const result = await chat.sendMessageStream(lastUserMsg);
-    
-    // E. Stream Response
+    // 🔥 STREAM RESPONSE
     const stream = new ReadableStream({
       async start(controller) {
         const encoder = new TextEncoder();
@@ -233,19 +307,17 @@ export async function POST(req: Request) {
               const text = chunk.text();
               if (text) controller.enqueue(encoder.encode(text));
             }
-        } catch (err) {
-            console.error("Stream Error", err);
-            controller.enqueue(encoder.encode("\n\n*Connection unstable... Re-aligning satellites...*"));
-        } finally {
-            controller.close();
-        }
+        } catch (err) { 
+            controller.enqueue(encoder.encode("⚠️ Stabilizing Neural Link... Standby.")); 
+        } 
+        finally { controller.close(); }
       },
     });
 
     return new Response(stream, { headers: { "Content-Type": "text/plain; charset=utf-8" } });
 
   } catch (error) {
-    console.error("FATAL AI ERROR:", error);
-    return new Response("AI System Overload. Please retry.", { status: 500 });
+    console.error("🔥 UNIVERSE COLLAPSE:", error);
+    return new Response("System overloaded. Please refresh.", { status: 500 });
   }
 }

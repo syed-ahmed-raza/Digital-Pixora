@@ -219,7 +219,8 @@ interface TextCardProps {
 // --- 5. RESPONSIVE TEXT CARD ---
 const TextCard = ({ item, index, setActiveIndex }: TextCardProps) => {
     const ref = useRef(null);
-    const isInView = useInView(ref, { margin: "-40% 0px -40% 0px" }); // Adjusted margin for better mobile trigger
+    // ⚡ Adjusted trigger margin for better mobile centering
+    const isInView = useInView(ref, { margin: "-40% 0px -40% 0px" }); 
 
     useEffect(() => {
         if (isInView) setActiveIndex(index);
@@ -248,13 +249,16 @@ const TextCard = ({ item, index, setActiveIndex }: TextCardProps) => {
                 </h3>
             </div>
             
-            <p className="text-white/60 text-sm md:text-xl leading-relaxed max-w-lg mb-6 md:mb-8 mt-2 md:mt-4">
+            <p className="text-white/60 text-sm md:text-xl leading-relaxed max-w-lg mb-6 md:mb-8 mt-2 md:mt-4 text-pretty">
                 {item.desc}
             </p>
 
             {/* Mobile Visual (Visible only on mobile/tablet) */}
-            <div className="lg:hidden w-full max-w-sm mx-auto aspect-square rounded-2xl overflow-hidden border border-white/10 bg-[#0a0a0a] shadow-lg mt-4">
+            {/* ⚡ FIX: Added min-height to prevent layout shifts */}
+            <div className="lg:hidden w-full max-w-sm mx-auto aspect-square rounded-2xl overflow-hidden border border-white/10 bg-[#0a0a0a] shadow-lg mt-4 relative">
                 {item.visual}
+                {/* Gloss overlay for mobile */}
+                <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent pointer-events-none mix-blend-overlay" />
             </div>
         </motion.div>
     )
@@ -294,6 +298,7 @@ export default function About() {
         <div className="flex flex-col lg:flex-row gap-12 lg:gap-24 items-start relative">
             
             {/* STICKY VISUALS (Desktop Only) */}
+            {/* ⚡ FIX: h-[600px] ensures sticky works perfectly on all desktop heights */}
             <div className="hidden lg:flex lg:w-1/2 sticky top-32 h-[600px] items-center justify-center">
                 <TiltContainer>
                     <AnimatePresence mode="wait">

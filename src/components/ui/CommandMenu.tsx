@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, ArrowUpRight, Copy, Home, Layers, Briefcase, Mail, X } from "lucide-react";
+import { Search, ArrowUpRight, Copy, Home, Layers, Briefcase, Mail, X, Command as CommandIcon } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function CommandMenu() {
@@ -38,7 +38,10 @@ export default function CommandMenu() {
     setOpen(false);
     const element = document.getElementById(id);
     if (element) {
-      element.scrollIntoView({ behavior: "smooth" });
+      // Timeout ensures menu closes before smooth scroll starts (performance)
+      setTimeout(() => {
+          element.scrollIntoView({ behavior: "smooth" });
+      }, 100);
     } else {
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
@@ -49,23 +52,28 @@ export default function CommandMenu() {
     navigator.clipboard.writeText("hellodigitalpixora@gmail.com");
     setOpen(false);
     toast.success("Email Copied to Clipboard", {
-        style: { background: "#0A0A0A", color: "#fff", border: "1px solid #22c55e" },
+        style: { 
+            background: "rgba(5, 5, 5, 0.9)", 
+            color: "#fff", 
+            border: "1px solid rgba(255, 255, 255, 0.1)",
+            backdropFilter: "blur(10px)"
+        },
         icon: "📋"
     });
   };
 
   const menuItems = [
-    { icon: <Home className="w-4 h-4" />, label: "Home", action: () => handleNavigation("home") },
-    { icon: <Layers className="w-4 h-4" />, label: "Services", action: () => handleNavigation("services") },
-    { icon: <Briefcase className="w-4 h-4" />, label: "Selected Work", action: () => handleNavigation("work") },
-    { icon: <Mail className="w-4 h-4" />, label: "Contact HQ", action: () => handleNavigation("contact") },
-    { icon: <Copy className="w-4 h-4" />, label: "Copy Email Address", action: copyEmail },
+    { id: "home", icon: <Home className="w-4 h-4" />, label: "Home", action: () => handleNavigation("home") },
+    { id: "services", icon: <Layers className="w-4 h-4" />, label: "Services", action: () => handleNavigation("services") },
+    { id: "work", icon: <Briefcase className="w-4 h-4" />, label: "Selected Work", action: () => handleNavigation("work") },
+    { id: "contact", icon: <Mail className="w-4 h-4" />, label: "Contact HQ", action: () => handleNavigation("contact") },
+    { id: "copy", icon: <Copy className="w-4 h-4" />, label: "Copy Email Address", action: copyEmail },
   ];
 
   return (
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-[9999] flex items-start justify-center pt-[15vh] px-4 font-sans">
+        <div className="fixed inset-0 z-[99999] flex items-start justify-center pt-[15vh] px-4 font-sans">
           
           {/* Backdrop (Click to close) */}
           <motion.div 
@@ -82,34 +90,43 @@ export default function CommandMenu() {
             animate={{ opacity: 1, scale: 1, y: 0 }} 
             exit={{ opacity: 0, scale: 0.95, y: -20 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="relative w-full max-w-lg bg-[#0A0A0A] border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
+            className="relative w-full max-w-lg bg-[#0A0A0A] border border-white/10 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden"
           >
             {/* Search Header */}
             <div className="flex items-center px-4 py-4 border-b border-white/5">
-              <Search className="w-5 h-5 text-white/40 mr-3" />
+              <Search className="w-5 h-5 text-[#E50914] mr-3" />
               <input 
                 type="text" 
-                placeholder="Type a command or search..." 
-                className="w-full bg-transparent text-white placeholder-white/20 focus:outline-none text-sm font-medium"
+                placeholder="Where do you want to go?" 
+                className="w-full bg-transparent text-white placeholder-white/30 focus:outline-none text-base font-medium"
                 autoFocus
               />
-              <button onClick={() => setOpen(false)} className="p-1 hover:bg-white/10 rounded-md transition-colors">
+              <button 
+                onClick={() => setOpen(false)} 
+                className="p-1 hover:bg-white/10 rounded-md transition-colors"
+              >
                 <X className="w-4 h-4 text-white/40" />
               </button>
             </div>
 
             {/* Menu Items */}
             <div className="p-2">
-              <span className="px-3 py-2 text-[10px] font-bold text-white/30 uppercase tracking-widest block">Navigation</span>
-              {menuItems.map((item, i) => (
+              <span className="px-3 py-2 text-[10px] font-bold text-white/30 uppercase tracking-widest block">
+                  Quick Actions
+              </span>
+              {menuItems.map((item) => (
                 <button 
-                  key={i} 
+                  key={item.id} 
                   onClick={item.action}
-                  className="w-full flex items-center justify-between px-3 py-3 rounded-lg hover:bg-white/5 hover:text-[#E50914] text-white/70 group transition-all"
+                  className="w-full flex items-center justify-between px-3 py-3 rounded-lg hover:bg-white/5 hover:text-[#E50914] text-white/70 group transition-all duration-200"
                 >
                   <div className="flex items-center gap-3">
-                    {item.icon}
-                    <span className="text-sm font-medium">{item.label}</span>
+                    <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-[#E50914]/10 group-hover:text-[#E50914] transition-colors">
+                        {item.icon}
+                    </div>
+                    <span className="text-sm font-medium group-hover:translate-x-1 transition-transform">
+                        {item.label}
+                    </span>
                   </div>
                   <ArrowUpRight className="w-4 h-4 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all text-[#E50914]" />
                 </button>
@@ -117,11 +134,19 @@ export default function CommandMenu() {
             </div>
 
             {/* Footer Hints */}
-            <div className="px-4 py-2 bg-white/[0.02] border-t border-white/5 flex justify-between items-center">
-                <span className="text-[10px] text-white/20 font-mono">Digital Pixora Command v1.0</span>
-                <div className="flex gap-2">
-                    <span className="text-[10px] bg-white/10 px-1.5 py-0.5 rounded text-white/40 font-mono">ESC</span>
-                    <span className="text-[10px] text-white/20">to close</span>
+            <div className="px-4 py-3 bg-white/[0.02] border-t border-white/5 flex justify-between items-center">
+                <span className="text-[10px] text-white/20 font-mono flex items-center gap-1">
+                    <CommandIcon className="w-3 h-3" /> Digital Pixora v1.0
+                </span>
+                <div className="flex gap-3">
+                    <div className="flex items-center gap-1">
+                        <span className="text-[9px] bg-white/10 px-1.5 py-0.5 rounded text-white/40 font-mono">TAB</span>
+                        <span className="text-[9px] text-white/20">Next</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <span className="text-[9px] bg-white/10 px-1.5 py-0.5 rounded text-white/40 font-mono">ESC</span>
+                        <span className="text-[9px] text-white/20">Close</span>
+                    </div>
                 </div>
             </div>
           </motion.div>

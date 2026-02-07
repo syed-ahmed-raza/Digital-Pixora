@@ -116,7 +116,7 @@ const ReviewColumn = ({ reviews, className, duration = "40s", reverse = false }:
                 } as React.CSSProperties}
             >
                 {infiniteReviews.map((review, i) => (
-                    // Unique Key Fix
+                    // Unique Key Fix for Duplicated Data
                     <ReviewCard key={`${i}-${review.client}-${reverse ? 'rev' : 'norm'}`} review={review} />
                 ))}
             </div>
@@ -127,7 +127,7 @@ const ReviewColumn = ({ reviews, className, duration = "40s", reverse = false }:
 // --- 3. MAIN SECTION ---
 export default function Testimonials() {
   return (
-    <section className="relative bg-[#050505] border-t border-white/5 overflow-hidden py-24 md:py-40 z-20">
+    <section id="testimonials" className="relative bg-[#050505] border-t border-white/5 overflow-hidden py-24 md:py-40 z-20">
       
       {/* Background Noise */}
       <div className="absolute inset-0 pointer-events-none opacity-[0.03] z-0 overflow-hidden mix-blend-overlay">
@@ -175,7 +175,7 @@ export default function Testimonials() {
 
       </div>
 
-      {/* 🔥 DIRECT CSS LOGIC (Hover Pause Added) */}
+      {/* 🔥 DIRECT CSS LOGIC (Hover Pause & Keyframes) */}
       <style jsx global>{`
         .backface-hidden {
             backface-visibility: hidden;

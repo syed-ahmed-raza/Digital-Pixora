@@ -6,10 +6,10 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: 'Pixora',
     description: 'A premium software house forging advanced digital ecosystems with Next.js, AI, and 3D WebGL.',
     start_url: '/',
-    display: 'standalone', 
+    display: 'standalone',
     orientation: 'portrait',
     background_color: '#020202',
-    theme_color: '#020202', 
+    theme_color: '#020202',
     icons: [
       {
         src: '/favicon.ico',
@@ -20,13 +20,13 @@ export default function manifest(): MetadataRoute.Manifest {
         src: '/icon-192.png',
         sizes: '192x192',
         type: 'image/png',
-        purpose: 'maskable'
+        purpose: 'maskable',
       },
       {
-        src: '/icon-512.png', 
+        src: '/icon-512.png',
         sizes: '512x512',
         type: 'image/png',
-        purpose: 'maskable'
+        purpose: 'maskable',
       },
     ],
     categories: ['business', 'technology', 'design'],

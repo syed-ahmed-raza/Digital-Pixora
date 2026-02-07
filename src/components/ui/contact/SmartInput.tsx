@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, AlertCircle, Waves, StopCircle } from "lucide-react";
+import { Mic, AlertCircle, StopCircle, Zap } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface SmartInputProps {
@@ -16,44 +16,62 @@ interface SmartInputProps {
   onVoiceResult?: (text: string) => void;
 }
 
-// --- NATIVE SPEECH RECOGNITION (Improved Hook) ---
+// --- NATIVE SPEECH RECOGNITION (Robust Hook) ---
 const useNativeSpeech = () => {
     const [isListening, setIsListening] = useState(false);
+    const [isSupported, setIsSupported] = useState(false);
     const recognitionRef = useRef<any>(null);
 
     useEffect(() => {
         if (typeof window !== "undefined") {
             const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
             if (SpeechRecognition) {
-                recognitionRef.current = new SpeechRecognition();
-                recognitionRef.current.continuous = false; // Auto-stop after silence
-                recognitionRef.current.interimResults = false;
-                recognitionRef.current.lang = "en-US";
+                setIsSupported(true);
+                const recognition = new SpeechRecognition();
+                recognition.continuous = false; // Stop after speaking
+                recognition.interimResults = true; // Show results while speaking
+                recognition.lang = "en-US";
+                recognitionRef.current = recognition;
             }
         }
+        
+        return () => {
+            if (recognitionRef.current) recognitionRef.current.abort();
+        };
     }, []);
 
-    const startListening = (onResult: (text: string) => void) => {
-        if (!recognitionRef.current) {
-            toast.error("Voice input not supported in this browser.");
-            return;
-        }
+    const startListening = (onResult: (text: string, isFinal: boolean) => void) => {
+        if (!recognitionRef.current) return;
 
         try {
             setIsListening(true);
             recognitionRef.current.start();
 
             recognitionRef.current.onresult = (event: any) => {
-                const transcript = event.results[0][0].transcript;
-                onResult(transcript);
-                setIsListening(false);
+                let finalTranscript = '';
+                let interimTranscript = '';
+
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript;
+                    } else {
+                        interimTranscript += event.results[i][0].transcript;
+                    }
+                }
+
+                if (finalTranscript) {
+                    onResult(finalTranscript, true);
+                    setIsListening(false);
+                } else if (interimTranscript) {
+                    // Optional: You can use this to show live preview
+                }
             };
 
             recognitionRef.current.onerror = (event: any) => {
                 console.error("Speech Error:", event.error);
                 setIsListening(false);
                 if (event.error === 'not-allowed') {
-                    toast.error("Microphone access denied.");
+                    toast.error("Microphone access blocked.");
                 }
             };
 
@@ -61,19 +79,18 @@ const useNativeSpeech = () => {
                 setIsListening(false);
             };
         } catch (e) {
-            console.error("Mic start failed", e);
             setIsListening(false);
         }
     };
 
     const stopListening = () => {
-        if (recognitionRef.current && isListening) {
+        if (recognitionRef.current) {
             recognitionRef.current.stop();
             setIsListening(false);
         }
     };
 
-    return { isListening, startListening, stopListening };
+    return { isListening, isSupported, startListening, stopListening };
 };
 
 export default function SmartInput({ 
@@ -87,10 +104,10 @@ export default function SmartInput({
   onVoiceResult 
 }: SmartInputProps) {
   const [isFocused, setIsFocused] = useState(false);
-  const inputId = useRef(`input-${Math.random().toString(36).substr(2, 9)}`).current;
+  // Ensure ID is stable across renders but unique
+  const inputId = useRef(`input-${name}`).current; 
   
-  // 🔥 UPDATED: Toggle Logic added
-  const { isListening, startListening, stopListening } = useNativeSpeech();
+  const { isListening, isSupported, startListening, stopListening } = useNativeSpeech();
 
   const handleMicClick = (e: React.MouseEvent) => {
       e.stopPropagation();
@@ -98,14 +115,19 @@ export default function SmartInput({
 
       if (isListening) {
           stopListening();
-          toast("Listening Paused", { icon: "⏸️", style: { background: "#333", color: "#fff" }});
+          toast("Voice Input Paused", { 
+              icon: "⏸️", 
+              style: { background: "#111", color: "#fff", border: "1px solid #333" }
+          });
       } else {
-          startListening((text) => {
-              onVoiceResult(text);
-              toast.success("Voice Captured", {
-                style: { background: "#0A0A0A", color: "#fff", border: "1px solid #22c55e" },
-                icon: "🎙️",
-              });
+          startListening((text, isFinal) => {
+              if (isFinal) {
+                  onVoiceResult(text);
+                  toast.success("Voice Captured", {
+                    style: { background: "#050505", color: "#fff", border: "1px solid #22c55e" },
+                    icon: "🎙️",
+                  });
+              }
           });
       }
   };
@@ -115,16 +137,17 @@ export default function SmartInput({
       <motion.div 
         animate={error ? { x: [-5, 5, -5, 5, 0] } : {}}
         transition={{ duration: 0.4 }}
-        className={`relative bg-[#0f0f0f] rounded-xl transition-all duration-500 overflow-hidden group-hover:bg-[#151515]
-        ${error ? "border border-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.2)]" : "border border-white/10 group-hover:border-white/20"}`}
+        className={`relative bg-[#0f0f0f] rounded-xl transition-all duration-500 overflow-hidden
+        ${error ? "border border-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.2)]" : 
+          isFocused ? "border-white/30 bg-[#151515]" : "border border-white/10 hover:border-white/20"}`}
       >
         {/* Animated Laser Border (Bottom) */}
-        <div className="absolute bottom-0 left-0 w-full h-[2px] bg-white/5 pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-full h-[1px] bg-white/5 pointer-events-none" />
         <motion.div 
             initial={{ width: "0%" }}
-            animate={{ width: isFocused ? "100%" : "0%" }}
+            animate={{ width: isFocused || isListening ? "100%" : "0%" }}
             transition={{ duration: 0.5, ease: "circOut" }}
-            className={`absolute bottom-0 left-0 h-[2px] z-30 ${error ? 'bg-red-500' : 'bg-[#E50914]'}`}
+            className={`absolute bottom-0 left-0 h-[2px] z-30 ${error ? 'bg-red-500' : (isListening ? 'bg-green-500' : 'bg-[#E50914]')}`}
         />
 
         {/* Listening Mode Visualization (Organic Waveform) */}
@@ -134,15 +157,15 @@ export default function SmartInput({
                     initial={{ opacity: 0 }} 
                     animate={{ opacity: 1 }} 
                     exit={{ opacity: 0 }} 
-                    className="absolute inset-0 bg-red-500/5 z-0 flex items-center justify-center pointer-events-none"
+                    className="absolute inset-0 bg-green-500/5 z-0 flex items-center justify-center pointer-events-none"
                 >
-                    <div className="flex gap-1 items-center h-8">
-                        {[1, 2, 3, 4, 5].map((i) => (
+                    <div className="flex gap-1 items-center h-full opacity-30">
+                        {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
                             <motion.div 
                                 key={i}
-                                animate={{ height: [4, 16 + Math.random() * 12, 4] }}
-                                transition={{ duration: 0.5, repeat: Infinity, delay: i * 0.1, ease: "easeInOut" }}
-                                className="w-1 bg-[#E50914] rounded-full opacity-80"
+                                animate={{ height: ["20%", `${Math.random() * 80 + 20}%`, "20%"] }}
+                                transition={{ duration: 0.4, repeat: Infinity, delay: i * 0.05, ease: "easeInOut" }}
+                                className="w-1 bg-green-500 rounded-full"
                             />
                         ))}
                     </div>
@@ -162,12 +185,12 @@ export default function SmartInput({
         </label>
 
         {/* 🎤 MIC BUTTON */}
-        {enableVoice && (
+        {enableVoice && isSupported && (
             <button 
                 type="button" 
                 onClick={handleMicClick}
                 className={`absolute top-3 right-3 p-2 rounded-full transition-all z-50 cursor-pointer hover:bg-white/10 active:scale-95 ${
-                    isListening ? 'bg-red-500/20 text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.4)] animate-pulse' : 'text-white/30 hover:text-white'
+                    isListening ? 'bg-green-500/20 text-green-500 shadow-[0_0_15px_rgba(34,197,94,0.4)] animate-pulse' : 'text-white/30 hover:text-white'
                 }`}
                 title={isListening ? "Stop Listening" : "Use Voice Input"}
             >
@@ -185,7 +208,7 @@ export default function SmartInput({
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setIsFocused(false)}
                 rows={4}
-                className="w-full bg-transparent text-white px-5 pt-8 pb-4 text-lg font-light focus:outline-none resize-none placeholder-transparent relative z-20 selection:bg-[#E50914]/30"
+                className="w-full bg-transparent text-white px-5 pt-8 pb-4 text-base md:text-lg font-light focus:outline-none resize-none placeholder-transparent relative z-20 selection:bg-[#E50914]/30"
                 spellCheck="false"
             />
         ) : (
@@ -198,7 +221,7 @@ export default function SmartInput({
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setIsFocused(false)}
                 autoComplete="off"
-                className="w-full bg-transparent text-white px-5 pt-8 pb-4 text-lg font-light focus:outline-none placeholder-transparent relative z-20 selection:bg-[#E50914]/30"
+                className="w-full bg-transparent text-white px-5 pt-8 pb-4 text-base md:text-lg font-light focus:outline-none placeholder-transparent relative z-20 selection:bg-[#E50914]/30"
             />
         )}
       </motion.div>

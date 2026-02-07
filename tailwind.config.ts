@@ -8,24 +8,28 @@ const config: Config = {
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
-    // 🛠️ FIX 1: Responsive Container Padding
+    // 🛠️ FIX 1: ULTRA-RESPONSIVE CONTAINER
     container: {
       center: true,
       padding: {
-        DEFAULT: "1rem",   // Mobile: 16px (Content ko saans lene ki jagah milegi)
-        sm: "1.5rem",      // Large Mobile
-        md: "2rem",        // Tablet
-        lg: "3rem",        // Laptop
-        xl: "4rem",        // Desktop
+        DEFAULT: "1rem",   // Mobile (16px) - Safe distance from edges
+        xs: "1.25rem",     // Large Phones
+        sm: "1.5rem",      // Tablets
+        md: "2rem",        // iPad Pro / Small Laptops
+        lg: "3rem",        // Laptops
+        xl: "4rem",        // Desktops
+        "2xl": "5rem",     // Large Screens
       },
       screens: {
         "2xl": "1400px",
       },
     },
     extend: {
-      // 🛠️ FIX 2: Global 3xl Breakpoint (Ab aap '3xl:text-9xl' use kar sakenge)
+      // 🛠️ FIX 2: GOD TIER BREAKPOINTS (Har screen size cover)
       screens: {
-        "3xl": "1600px",
+        'xs': '475px',     // 🔥 Extra Small devices (older iPhones/Androids)
+        '3xl': '1600px',   // 🔥 MacBook Pro 16" & Large Monitors
+        '4xl': '2000px',   // 🔥 Ultra-Wide Monitors (Gaming setups)
       },
       colors: {
         background: "hsl(var(--background))",

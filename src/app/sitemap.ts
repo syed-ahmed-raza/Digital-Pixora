@@ -1,7 +1,6 @@
 import { MetadataRoute } from 'next'
 
 export default function sitemap(): MetadataRoute.Sitemap {
-
   const baseUrl = 'https://digitalpixora.com'; 
 
   return [
@@ -11,7 +10,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'weekly',
       priority: 1,
     },
-  
-  
+    
   ]
 }

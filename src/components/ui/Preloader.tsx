@@ -15,10 +15,11 @@ export default function Preloader({ onComplete }: PreloaderProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
 
-  // --- 1. SCREEN DIMENSIONS & MOBILE CHECK ---
+  // --- 1. SCREEN DIMENSIONS & MOBILE CHECK (Safe for SSR) ---
   useEffect(() => {
     const resize = () => {
         setDimension({ width: window.innerWidth, height: window.innerHeight });
+        // 768px is the standard breakpoint for tablets/mobile
         setIsMobile(window.innerWidth < 768);
     }
     
@@ -33,6 +34,7 @@ export default function Preloader({ onComplete }: PreloaderProps) {
   useEffect(() => {
     if (index == words.length - 1) return;
     
+    // First word stays longer (1s), others flash fast (150ms)
     const timeout = setTimeout(() => {
       setIndex(index + 1);
     }, index === 0 ? 1000 : 150);
@@ -46,9 +48,9 @@ export default function Preloader({ onComplete }: PreloaderProps) {
     document.body.style.overflow = "hidden";
     document.body.style.cursor = "wait";
 
+    // Trigger exit animation when words finish
     if (index === words.length - 1) {
-      // Last word stays for a bit longer
-      const timeout = setTimeout(() => setIsLoading(false), 800);
+      const timeout = setTimeout(() => setIsLoading(false), 1000); // Wait a bit on the brand name
       return () => clearTimeout(timeout);
     }
   }, [index]);
@@ -57,7 +59,7 @@ export default function Preloader({ onComplete }: PreloaderProps) {
   // Initial: Curve bows downwards slightly
   const initialPath = `M0 0 L${dimension.width} 0 L${dimension.width} ${dimension.height} Q${dimension.width / 2} ${dimension.height + 300} 0 ${dimension.height}  L0 0`;
   
-  // Target: Curve snaps flat upwards
+  // Target: Curve snaps flat upwards (exiting)
   const targetPath = `M0 0 L${dimension.width} 0 L${dimension.width} ${dimension.height} Q${dimension.width / 2} ${dimension.height} 0 ${dimension.height}  L0 0`;
 
   const curve: Variants = {
@@ -86,6 +88,8 @@ export default function Preloader({ onComplete }: PreloaderProps) {
         onExitComplete={() => {
             document.body.style.overflow = ""; // Unlock Scroll
             document.body.style.cursor = "default";
+            // Ensure smooth scroll doesn't jerk after preloader
+            window.scrollTo(0, 0); 
             onComplete(); 
         }}
     >
@@ -95,10 +99,11 @@ export default function Preloader({ onComplete }: PreloaderProps) {
           variants={slideUp}
           initial="initial"
           exit="exit"
-          className="fixed inset-0 z-[99999] flex items-center justify-center bg-[#050505] text-white"
+          // 🔥 FIX: h-[100dvh] ensures it covers full mobile screen (address bar fix)
+          className="fixed inset-0 z-[99999] flex items-center justify-center bg-[#050505] text-white h-screen h-[100dvh] w-full touch-none"
         >
           {/* --- CONTENT CENTER --- */}
-          <div className="relative z-10 flex items-center justify-center">
+          <div className="relative z-10 flex items-center justify-center px-4 w-full">
               {/* RED GLOW SPOT (Hidden on mobile to save GPU) */}
               {!isMobile && (
                   <motion.div 
@@ -111,14 +116,14 @@ export default function Preloader({ onComplete }: PreloaderProps) {
               )}
               
               {/* FLASHING WORDS */}
+              {/* 🔥 FIX: Text size is fluid (vw) on mobile to never cut off */}
               <motion.p 
                 key={index}
-                // Mobile: No Blur (Sharp & Fast), Desktop: Blur (Cinematic)
                 initial={{ opacity: 0, y: 15, filter: isMobile ? "blur(0px)" : "blur(10px)" }}
                 animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
                 exit={{ opacity: 0, y: -15, filter: isMobile ? "blur(0px)" : "blur(10px)" }}
                 transition={{ duration: 0.25, ease: "easeOut" }}
-                className="text-4xl md:text-7xl font-black mix-blend-difference z-20 tracking-tighter"
+                className="text-[12vw] sm:text-6xl md:text-7xl font-black mix-blend-difference z-20 tracking-tighter text-center w-full"
               >
                 {words[index]}
                 {index === words.length - 1 && <span className="text-[#E50914]">.</span>}
@@ -127,6 +132,7 @@ export default function Preloader({ onComplete }: PreloaderProps) {
 
           {/* --- SVG CURVE CURTAIN (DESKTOP ONLY) --- */}
           {/* This SVG creates the "Liquid Pull" effect at the bottom when sliding up */}
+          {/* We hide this on mobile because complex SVG animations can cause frame drops on phones */}
           {!isMobile && dimension.width > 0 && (
             <svg className="absolute top-0 w-full h-[calc(100%+300px)] pointer-events-none fill-[#050505] z-0">
                 <motion.path 

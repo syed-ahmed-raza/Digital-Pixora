@@ -9,23 +9,37 @@ export default function SmoothScroll({ children }: { children: React.ReactNode }
   const lenisRef = useRef<any>(null);
 
   useEffect(() => {
-    // 1. UPDATE SCROLLTRIGGER ON SCROLL
-    // Jab bhi Lenis scroll kare, GSAP ko batao ke "Update ho jao"
-    // Yeh Sticky elements ke liye bohot zaroori hai.
+    const lenis = lenisRef.current?.lenis;
+    if (!lenis) return;
+
+    // --- 1. SYNC GSAP SCROLLTRIGGER ---
+    // Jab Lenis scroll kare, ScrollTrigger ko update karo.
+    // Yeh Sticky Cards ke liye CRITICAL hai.
+    lenis.on('scroll', ScrollTrigger.update);
+
+    // --- 2. SYNC WITH GSAP TICKER ---
+    // High-performance rendering loop (120Hz capable)
     const update = (time: number) => {
-      lenisRef.current?.lenis?.raf(time * 1000);
+      lenis.raf(time * 1000);
     };
 
-    // 2. SYNC WITH GSAP TICKER
-    // GSAP ki clock aur Lenis ki clock ko ek kar diya.
-    // Result: Zero Lag, 120Hz Smoothness.
     gsap.ticker.add(update);
 
-    // Disable GSAP's native lag smoothing (conflict prevent karne ke liye)
+    // Disable GSAP's internal lag smoothing to allow Lenis to take full control
     gsap.ticker.lagSmoothing(0);
 
+    // --- 3. RESIZE HANDLING (Mobile Orientation Fix) ---
+    const handleResize = () => {
+        lenis.resize();
+        ScrollTrigger.refresh();
+    };
+    window.addEventListener('resize', handleResize);
+
+    // Cleanup
     return () => {
       gsap.ticker.remove(update);
+      window.removeEventListener('resize', handleResize);
+      lenis.off('scroll', ScrollTrigger.update);
     };
   }, []);
 
@@ -33,16 +47,18 @@ export default function SmoothScroll({ children }: { children: React.ReactNode }
     <ReactLenis 
       ref={lenisRef}
       root 
-      autoRaf={false} // 🔥 CRITICAL: Hum GSAP ke ticker se drive kar rahe hain, isliye auto off kiya.
+      autoRaf={false} // Manual ticker control via GSAP
       options={{ 
-        // 💎 LUXURY SMOOTHNESS SETTINGS
-        lerp: 0.06,           // 0.06 = Creamy Smooth
-        duration: 1.2,        
+        // 💎 GOLD TIER SMOOTHNESS
+        lerp: 0.07,           // 0.07 = Perfect balance of weight and snappiness
+        duration: 1.2,        // Momentum duration
         smoothWheel: true,    
         wheelMultiplier: 1,   
-        touchMultiplier: 2,   // Mobile Swipe thoda responsive
+        
+        // 🔥 MOBILE OPTIMIZATION
+        touchMultiplier: 1.5, // 2 was too fast, 1.5 is natural feeling
         infinite: false,
-        syncTouch: true,      // Mobile par native feel maintain rakhta hai
+        syncTouch: true,      // Ensures touch scrolling feels 1:1 tied to finger
       }}
     >
       {children}

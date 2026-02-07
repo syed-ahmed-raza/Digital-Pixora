@@ -2,13 +2,11 @@
 
 import dynamic from "next/dynamic";
 
-// ✅ FIX: WebDevelopment ko DIRECT import kiya hai.
-// Kyunke isme "Sticky Cards" hain. Agar ye lazy load hoga to ScrollTrigger height 
-// sahi calculate nahi kar payega aur cards atak jayenge.
+// ✅ GREAT MOVE: First section DIRECT import for perfect Sticky Calculation
 import WebDevelopment from "@/components/work/WebDevelopment";
 
-// --- OTHERS CAN REMAIN DYNAMIC (Performance ke liye) ---
-// Inko lazy load rakha hai kyunke ye scroll ke baad aaty hain.
+// --- LAZY LOAD REST (Performance Optimization) ---
+// Loading state mein 'min-h-screen' rakha hai taake layout shift na ho
 const VisualDesign = dynamic(() => import("@/components/work/VisualDesign"), { 
   ssr: true,
   loading: () => <div className="min-h-screen w-full bg-[#050505]" /> 
@@ -26,10 +24,14 @@ const AiEngineering = dynamic(() => import("@/components/work/AiEngineering"), {
 
 export default function Work() {
   return (
-    // overflow-visible zaroori hai taake sticky elements scroll ko rok sakein
-    <section id="work" className="relative w-full z-10 overflow-visible bg-[#050505]">
+    // 🔥 FIX: 'overflow-visible' is crucial for Sticky Cards.
+    // 'max-w-[100vw]' ensures no horizontal scrolling on mobile if animations fly out.
+    <section 
+        id="work" 
+        className="relative w-full max-w-[100vw] z-10 overflow-visible bg-[#050505]"
+    >
       
-      {/* 1. WEB DEV (The Flagship Stacking Section - Loaded Instantly) */}
+      {/* 1. WEB DEV (Sticky Stack - Loaded Instantly) */}
       <WebDevelopment />
       
       {/* 2. VISUAL DESIGN */}

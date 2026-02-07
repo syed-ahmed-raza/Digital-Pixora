@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion"; 
-import { Terminal, Palette, Film, Bot, Plus, Activity } from "lucide-react";
+import { Terminal, Palette, Film, Bot, Plus, Activity, ArrowRight } from "lucide-react";
 
 // --- DATA ---
 const services = [
@@ -47,21 +47,29 @@ const services = [
 export default function Services() {
   const [activeId, setActiveId] = useState<number>(1); 
   const [isMobile, setIsMobile] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   // --- ⚡ SAFE RESIZE LISTENER ---
   useEffect(() => {
+    setMounted(true);
     let timeoutId: NodeJS.Timeout;
+    
+    const checkScreen = () => setIsMobile(window.innerWidth < 1024);
+    checkScreen();
+
     const handleResize = () => {
         clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => setIsMobile(window.innerWidth < 1024), 100);
+        timeoutId = setTimeout(checkScreen, 100);
     };
-    handleResize(); // Run on mount
+    
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  if (!mounted) return null; // Prevent Hydration Mismatch
+
   return (
-    <section id="services" className="relative py-16 md:py-24 lg:py-32 px-4 md:px-8 bg-[#050505] overflow-hidden min-h-screen flex flex-col justify-center">
+    <section id="services" className="relative py-20 md:py-32 px-4 md:px-8 bg-[#050505] overflow-hidden min-h-screen flex flex-col justify-center">
       
       {/* 🌌 Background Ambience */}
       <div className="absolute inset-0 w-full h-full pointer-events-none z-0 overflow-hidden">
@@ -70,7 +78,7 @@ export default function Services() {
           <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03]" />
       </div>
 
-      <div className="relative z-10 max-w-[1600px] mx-auto w-full space-y-8 md:space-y-16">
+      <div className="relative z-10 max-w-[1600px] mx-auto w-full space-y-12 md:space-y-16">
         
         {/* 🔥 HEADER */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-white/5 pb-8">
@@ -88,28 +96,28 @@ export default function Services() {
                     Digital <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#E50914] to-orange-600">Arsenal</span>
                 </h2>
             </div>
-            <p className="text-white/40 text-sm md:text-lg max-w-sm leading-relaxed hidden md:block">
-                Select a domain to deploy our technical weaponry.
+            <p className="text-white/40 text-sm md:text-lg max-w-sm leading-relaxed hidden md:block text-right">
+                Select a domain to deploy our<br/>technical weaponry.
             </p>
         </div>
 
         {/* 🚀 ULTRA-FLUID ACCORDION */}
-        <div className="flex flex-col lg:flex-row gap-4 w-full lg:h-[600px]">
+        <div className="flex flex-col lg:flex-row gap-4 w-full lg:h-[650px]">
             {services.map((service) => {
                 const isActive = activeId === service.id;
                 
                 return (
                     <motion.div
                         key={service.id}
-                        layout
+                        layout="position" // Smoother layout transitions
                         onClick={() => setActiveId(service.id)}
                         onMouseEnter={() => !isMobile && setActiveId(service.id)}
                         // 🔥 Snappy Spring Animation
                         transition={{ 
-                            layout: { duration: 0.4, type: "spring", stiffness: 100, damping: 15 } 
+                            layout: { duration: 0.5, type: "spring", stiffness: 120, damping: 20 } 
                         }}
                         className={`
-                            relative overflow-hidden rounded-2xl lg:rounded-[2rem] border cursor-pointer group 
+                            relative overflow-hidden rounded-2xl lg:rounded-[2.5rem] border cursor-pointer group 
                             transition-all duration-500
                             
                             /* --- FORCE HARDWARE ACCELERATION --- */
@@ -117,13 +125,12 @@ export default function Services() {
 
                             /* --- RESPONSIVE LOGIC --- */
                             ${isActive 
-                                ? "flex-[10] lg:flex-[3.5] bg-[#0a0a0a] border-[#E50914]" 
+                                ? "flex-[10] lg:flex-[3.5] bg-[#0a0a0a] border-[#E50914] shadow-[0_0_50px_rgba(229,9,20,0.15)]" 
                                 : "flex-[1] lg:flex-[0.5] bg-white/[0.02] border-white/5 hover:border-white/10 hover:bg-white/[0.04]" 
                             }
                             
-                            /* 🛠️ FIX: Balanced Mobile Heights */
-                            ${isActive ? "min-h-[420px]" : "min-h-[60px]"}
-                            lg:min-h-auto
+                            /* 🛠️ FIX: Mobile Height - Active card takes 60vh for focus */
+                            ${isActive ? "min-h-[60dvh] lg:min-h-auto" : "min-h-[80px] lg:min-h-auto"}
                         `}
                     >
                         {/* 1. ACTIVE VISUALS (Background) */}
@@ -133,7 +140,7 @@ export default function Services() {
                                     initial={{ opacity: 0 }} 
                                     animate={{ opacity: 1 }} 
                                     exit={{ opacity: 0 }}
-                                    transition={{ duration: 0.4 }}
+                                    transition={{ duration: 0.6 }}
                                     className="absolute inset-0 z-0"
                                 >
                                     {/* Parallax Image Effect */}
@@ -143,10 +150,12 @@ export default function Services() {
                                         animate={{ scale: 1.1 }}
                                         transition={{ duration: 10, ease: "linear" }}
                                     />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/90 to-transparent" />
+                                    {/* Heavy Vignette for Text Readability */}
+                                    <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/80 to-transparent" />
+                                    <div className="absolute inset-0 bg-gradient-to-r from-[#050505]/80 to-transparent" />
                                     
                                     {/* Laser Scan Line */}
-                                    <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-[#E50914] to-transparent opacity-60 animate-scan" />
+                                    <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-[#E50914] to-transparent opacity-60 animate-scan" />
                                 </motion.div>
                             )}
                         </AnimatePresence>
@@ -155,11 +164,11 @@ export default function Services() {
                         <AnimatePresence>
                             {isActive && (
                                 <motion.div 
-                                    initial={{ opacity: 0, y: 20 }} 
+                                    initial={{ opacity: 0, y: 30 }} 
                                     animate={{ opacity: 1, y: 0 }} 
-                                    exit={{ opacity: 0, y: 10 }}
-                                    transition={{ delay: 0.2, duration: 0.4 }}
-                                    className="absolute inset-0 p-6 md:p-10 flex flex-col justify-between z-20"
+                                    exit={{ opacity: 0, y: 20 }}
+                                    transition={{ delay: 0.2, duration: 0.5, ease: "easeOut" }}
+                                    className="absolute inset-0 p-6 md:p-12 flex flex-col justify-between z-20"
                                 >
                                     <div className="flex justify-between items-start">
                                         <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 backdrop-blur-md rounded-full border border-white/10 shadow-[0_0_15px_rgba(229,9,20,0.2)]">
@@ -167,28 +176,33 @@ export default function Services() {
                                             <span className="text-[10px] uppercase tracking-widest text-white font-bold">Online</span>
                                         </div>
                                         {/* Number: Huge on desktop, smaller on mobile */}
-                                        <h3 className="text-[60px] md:text-[100px] lg:text-[120px] font-black text-white/[0.04] leading-none absolute top-4 right-4 lg:static select-none pointer-events-none">
+                                        <h3 className="text-[50px] md:text-[100px] lg:text-[140px] font-black text-white/[0.03] leading-none absolute top-4 right-4 lg:top-6 lg:right-10 select-none pointer-events-none">
                                             {service.number}
                                         </h3>
                                     </div>
 
-                                    <div>
-                                        <div className="w-12 h-12 md:w-16 md:h-16 bg-[#E50914] rounded-2xl flex items-center justify-center mb-4 md:mb-6 shadow-[0_0_30px_rgba(229,9,20,0.4)]">
+                                    <div className="relative z-10">
+                                        <div className="w-12 h-12 md:w-16 md:h-16 bg-[#E50914] rounded-2xl flex items-center justify-center mb-4 md:mb-8 shadow-[0_10px_30px_rgba(229,9,20,0.3)] group-hover:scale-110 transition-transform duration-500">
                                             {service.icon}
                                         </div>
-                                        <h2 className="text-3xl md:text-5xl lg:text-6xl font-black uppercase text-white mb-3 md:mb-4 leading-[0.9]">
+                                        <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-black uppercase text-white mb-4 leading-[0.9]">
                                             {service.title}
                                         </h2>
-                                        <p className="text-white/70 text-sm md:text-lg max-w-lg font-light leading-relaxed text-pretty">
+                                        <p className="text-white/70 text-sm md:text-lg max-w-lg font-light leading-relaxed text-pretty mb-6 md:mb-0">
                                             {service.description}
                                         </p>
+
+                                        {/* Mobile Only 'Explore' hint */}
+                                        <div className="lg:hidden flex items-center gap-2 text-[#E50914] text-xs font-bold uppercase tracking-widest mt-4">
+                                            Explore <ArrowRight className="w-4 h-4" />
+                                        </div>
                                     </div>
                                 </motion.div>
                             )}
                         </AnimatePresence>
 
                         {/* 3. INACTIVE STRIP (The Label) */}
-                        <div className={`absolute inset-0 flex items-center px-6 transition-all duration-300 ${isActive ? 'opacity-0 pointer-events-none' : 'opacity-100 delay-150'}`}>
+                        <div className={`absolute inset-0 flex items-center px-6 transition-all duration-500 ${isActive ? 'opacity-0 pointer-events-none' : 'opacity-100 delay-100'}`}>
                             
                             {/* Mobile Row */}
                             <div className="lg:hidden flex items-center justify-between w-full">
@@ -196,7 +210,7 @@ export default function Services() {
                                     <span className="text-[#E50914] font-mono text-sm">{service.number}</span>
                                     <span className="text-white font-bold uppercase tracking-wider text-lg">{service.shortTitle}</span>
                                 </div>
-                                <div className="p-2 border border-white/10 rounded-full text-white/30">
+                                <div className="p-2 border border-white/10 rounded-full text-white/30 bg-white/5">
                                     <Plus className="w-4 h-4" />
                                 </div>
                             </div>
@@ -204,10 +218,10 @@ export default function Services() {
                             {/* Desktop Vertical Column */}
                             <div className="hidden lg:flex flex-col items-center justify-center h-full w-full relative">
                                 <span className="absolute top-8 text-white/20 font-mono text-sm">{service.number}</span>
-                                <h3 className="text-xl font-bold text-white/30 uppercase tracking-[0.2em] -rotate-90 whitespace-nowrap group-hover:text-white transition-colors duration-300">
+                                <h3 className="text-xl font-bold text-white/40 uppercase tracking-[0.2em] -rotate-90 whitespace-nowrap group-hover:text-white transition-colors duration-300">
                                     {service.shortTitle}
                                 </h3>
-                                <div className="absolute bottom-8 w-1 h-1 bg-[#E50914] rounded-full opacity-50 group-hover:opacity-100 group-hover:shadow-[0_0_10px_#E50914] transition-all" />
+                                <div className="absolute bottom-8 w-1 h-1 bg-[#E50914] rounded-full opacity-0 group-hover:opacity-100 group-hover:shadow-[0_0_15px_#E50914] transition-all duration-300 scale-0 group-hover:scale-150" />
                             </div>
                         </div>
 

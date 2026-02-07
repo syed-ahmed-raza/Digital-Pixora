@@ -1,230 +1,105 @@
 "use server";
 
-import nodemailer from "nodemailer";
 import { z } from "zod";
+import { headers } from "next/headers";
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
+import { sendAdminNotification, sendWelcomePack } from "@/lib/mail"; 
 
-// --- 1. CONFIGURATION ---
+// --- 1. 🛡️ CONFIGURATION ---
+const redis = (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN)
+  ? new Redis({ url: process.env.UPSTASH_REDIS_REST_URL, token: process.env.UPSTASH_REDIS_REST_TOKEN })
+  : null;
+
+// Rate Limit: 3 Emails per minute per IP (Anti-Spam Shield)
+const ratelimit = redis 
+  ? new Ratelimit({ redis: redis, limiter: Ratelimit.slidingWindow(3, "60 s") }) 
+  : null;
+
+// --- 2. 📝 VALIDATION SCHEMA (Strict) ---
 const contactFormSchema = z.object({
-  name: z.string().trim().min(2, "Name is too short").max(50, "Name is too long"),
-  email: z.string().trim().email("Invalid email format"),
-  message: z.string().trim().min(10, "Please provide more details").max(5000, "Message limit exceeded"),
+  name: z.string().trim().min(2, "Name requires at least 2 characters.").max(100),
+  email: z.string().trim().email("Please enter a valid email address.").max(100),
+  message: z.string().trim().min(10, "Please provide more details (min 10 chars).").max(5000, "Message limit exceeded."),
 });
 
-const generateTicketId = () => {
-  const segment = Math.random().toString(36).substring(2, 6).toUpperCase();
-  return `DPX-${new Date().getFullYear()}-${segment}`;
-};
-
-// --- 2. THE "ARCHITECT" ULTRA-PREMIUM TEMPLATE ---
-const createPremiumTemplate = (name: string, ticketId: string, messagePreview: string) => `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="color-scheme" content="dark">
-  <title>Digital Pixora | Project Status</title>
-  <style>
-    /* RESET & BASE */
-    body { margin: 0; padding: 0; background-color: #000000; color: #e5e5e5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
-    table { border-collapse: collapse; width: 100%; }
-    
-    /* LAYOUT */
-    .wrapper { width: 100%; padding: 40px 0; background-color: #000000; }
-    .container { max-width: 600px; margin: 0 auto; background-color: #050505; border: 1px solid #1f1f1f; border-radius: 12px; overflow: hidden; }
-    
-    /* ACCENT BAR */
-    .accent-bar { height: 4px; background: linear-gradient(90deg, #E50914, #ff4d4d); width: 100%; }
-
-    /* HEADER */
-    .header { padding: 30px 40px; border-bottom: 1px solid #1f1f1f; background: #080808; display: flex; align-items: center; justify-content: space-between; }
-    .brand { color: #fff; font-size: 14px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; text-decoration: none; }
-    .meta { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 1px; float: right; }
-
-    /* CONTENT BODY */
-    .content { padding: 40px; }
-    .h1 { font-size: 22px; font-weight: 600; color: #fff; margin: 0 0 10px; letter-spacing: -0.3px; line-height: 1.3; }
-    .p { font-size: 14px; color: #888; line-height: 1.6; margin: 0 0 25px; }
-
-    /* THE GRID SYSTEM (Dashboard Look) */
-    .grid { display: table; width: 100%; border: 1px solid #1f1f1f; border-radius: 8px; margin-bottom: 30px; background: #0A0A0A; }
-    .grid-row { display: table-row; }
-    .grid-cell { display: table-cell; padding: 15px 20px; border-bottom: 1px solid #1f1f1f; border-right: 1px solid #1f1f1f; width: 50%; vertical-align: top; }
-    .grid-cell:last-child { border-right: none; }
-    .grid-row:last-child .grid-cell { border-bottom: none; }
-    
-    .label { font-size: 10px; color: #555; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 5px; font-weight: 600; }
-    .value { font-size: 13px; color: #fff; font-family: 'SF Mono', 'Menlo', monospace; font-weight: 500; }
-    .status-active { color: #22c55e; display: inline-block; position: relative; padding-left: 12px; }
-    .status-active::before { content: ''; position: absolute; left: 0; top: 5px; width: 6px; height: 6px; background: #22c55e; border-radius: 50%; box-shadow: 0 0 8px rgba(34, 197, 94, 0.4); }
-
-    /* MESSAGE BLOCK (Terminal Style) */
-    .terminal { background: #0d0d0d; border-radius: 6px; border: 1px solid #1f1f1f; padding: 20px; font-family: 'SF Mono', 'Menlo', monospace; font-size: 12px; color: #aaa; margin-bottom: 30px; position: relative; }
-    .terminal::before { content: 'Brief Snapshot'; position: absolute; top: -10px; left: 15px; background: #050505; padding: 0 8px; font-size: 10px; color: #555; text-transform: uppercase; letter-spacing: 1px; }
-
-    /* TIMELINE (Visual Progress) */
-    .timeline { margin-bottom: 30px; }
-    .step { display: flex; align-items: center; margin-bottom: 12px; }
-    .step-icon { width: 16px; height: 16px; border-radius: 50%; background: #1f1f1f; margin-right: 12px; position: relative; display: flex; align-items: center; justify-content: center; }
-    .step-icon.active { background: #E50914; box-shadow: 0 0 10px rgba(229, 9, 20, 0.3); }
-    .step-icon.active::after { content: '✓'; color: white; font-size: 10px; font-weight: bold; }
-    .step-text { font-size: 12px; color: #444; font-weight: 500; }
-    .step-text.active { color: #fff; }
-    .line { height: 15px; width: 1px; background: #1f1f1f; margin-left: 8px; margin-top: -8px; margin-bottom: 4px; }
-
-    /* CTA BUTTON */
-    .btn-wrap { text-align: center; }
-    .btn { display: inline-block; background-color: #fff; color: #000; font-size: 13px; font-weight: 700; padding: 14px 30px; border-radius: 50px; text-decoration: none; transition: 0.2s; box-shadow: 0 4px 20px rgba(255,255,255,0.1); }
-    .btn:hover { background-color: #e6e6e6; transform: translateY(-1px); }
-
-    /* FOOTER */
-    .footer { padding: 30px; background: #030303; border-top: 1px solid #1f1f1f; text-align: center; }
-    .footer-text { font-size: 11px; color: #444; line-height: 1.5; margin: 0; }
-    .footer-link { color: #666; text-decoration: none; }
-  </style>
-</head>
-<body>
-  <div class="wrapper">
-    <div class="container">
-      <div class="accent-bar"></div>
-      
-      <div class="header">
-        <span class="brand">Digital Pixora<span>.</span></span>
-        <span class="meta">${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
-      </div>
-
-      <div class="content">
-        <h1 class="h1">We’ve secured your request, ${name}.</h1>
-        <p class="p">
-          This is an automated acknowledgment. Your inquiry has been logged into our central workspace and assigned to a Senior Architect.
-        </p>
-
-        <div class="grid">
-          <div class="grid-row">
-            <div class="grid-cell">
-              <span class="label">Reference ID</span>
-              <span class="value" style="color: #E50914;">${ticketId}</span>
-            </div>
-            <div class="grid-cell">
-              <span class="label">Current Status</span>
-              <span class="value status-active">In Queue</span>
-            </div>
-          </div>
-          <div class="grid-row">
-            <div class="grid-cell">
-              <span class="label">Priority Level</span>
-              <span class="value">High</span>
-            </div>
-            <div class="grid-cell">
-              <span class="label">Est. Response</span>
-              <span class="value">~24 Hours</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="terminal">
-          <span style="color: #666;">></span> ${messagePreview.substring(0, 140)}${messagePreview.length > 140 ? '...' : ''}
-        </div>
-
-        <div class="timeline">
-          <div class="step">
-            <div class="step-icon active"></div>
-            <div class="step-text active">Inquiry Received</div>
-          </div>
-          <div class="line"></div>
-          <div class="step">
-            <div class="step-icon"></div>
-            <div class="step-text">Engineering Review</div>
-          </div>
-          <div class="line"></div>
-          <div class="step">
-            <div class="step-icon"></div>
-            <div class="step-text">Strategic Proposal</div>
-          </div>
-        </div>
-
-        <div class="btn-wrap">
-          <a href="https://digitalpixora.com" class="btn">View Workspace</a>
-        </div>
-      </div>
-
-      <div class="footer">
-        <p class="footer-text">
-          &copy; ${new Date().getFullYear()} Digital Pixora Inc. • Hyderabad, Pakistan<br>
-          <span style="opacity: 0.5;">Automated System Notification // Do not reply directly to this bot.</span>
-        </p>
-      </div>
-    </div>
-  </div>
-</body>
-</html>
-`;
-
-// --- 3. SERVER ACTION (Brevo Configured) ---
-export async function sendEmail(prevState: any, formData: FormData) {
-  const name = formData.get("name") as string;
-  const email = formData.get("email") as string;
-  const message = formData.get("message") as string;
-
-  // 1. Validation
-  const result = contactFormSchema.safeParse({ name, email, message });
-  if (!result.success) {
-    let errorMessage = "";
-    result.error.issues.forEach((issue) => { errorMessage += issue.message + ". "; });
-    return { success: false, message: errorMessage || "Invalid input data." };
-  }
-
-  // 2. Env Config (CHECK YOUR .ENV.LOCAL)
-  const SMTP_LOGIN = process.env.SMTP_USER;
-  const SMTP_KEY = process.env.SMTP_PASSWORD;
-  const SENDER_IDENTITY = process.env.MY_EMAIL; 
-
-  if (!SMTP_LOGIN || !SMTP_KEY || !SENDER_IDENTITY) {
-      return { success: false, message: "Server misconfiguration. Contact Admin." };
-  }
-
-  // 3. Transporter
-  const transporter = nodemailer.createTransport({
-    host: "smtp-relay.brevo.com",
-    port: 587,
-    secure: false, // TLS
-    auth: { user: SMTP_LOGIN, pass: SMTP_KEY },
-  });
-
-  const ticketId = generateTicketId();
-
+// --- 3. 🕵️ INTELLIGENCE GATHERING (Hybrid: Edge + Fallback) ---
+async function getUserContext(ip: string) {
   try {
-    await Promise.all([
-      // A. Admin Notification
-      transporter.sendMail({
-        from: `"Pixora Bot" <${SENDER_IDENTITY}>`,
-        to: SENDER_IDENTITY,
-        replyTo: email,
-        subject: `⚡ Lead: ${name}`,
-        html: `
-            <div style="font-family: -apple-system, sans-serif; padding: 20px;">
-                <h3 style="margin-top:0;">New Inquiry</h3>
-                <p><strong>Name:</strong> ${name}</p>
-                <p><strong>Email:</strong> <a href="mailto:${email}">${email}</a></p>
-                <hr style="border:0; border-top:1px solid #eee; margin: 20px 0;">
-                <p style="white-space: pre-wrap;">${message}</p>
-            </div>
-        `
-      }),
+    const headersList = await headers();
+    
+    // 🛡️ LAYER 1: VERCEL EDGE (0ms Latency)
+    const vCity = headersList.get("x-vercel-ip-city");
+    const vCountry = headersList.get("x-vercel-ip-country");
+    const vTimezone = headersList.get("x-vercel-ip-timezone");
 
-      // B. Client Auto-Reply (The Architect Template)
-      transporter.sendMail({
-        from: `"Digital Pixora" <${SENDER_IDENTITY}>`,
-        to: email,
-        subject: `Received: Project Inquiry [${ticketId}]`,
-        html: createPremiumTemplate(name, ticketId, message),
-      })
+    if (vCity && vCountry) {
+        return { 
+            location: `${decodeURIComponent(vCity)}, ${vCountry}`, 
+            localTime: new Date().toLocaleTimeString('en-US', { timeZone: vTimezone || 'Asia/Karachi' }) 
+        };
+    }
+
+    // 🛡️ LAYER 2: API FALLBACK (Only if Layer 1 fails)
+    const res = await fetch(`http://ip-api.com/json/${ip}?fields=city,country,timezone`, { 
+        cache: 'no-store',
+        signal: AbortSignal.timeout(1500) 
+    });
+    
+    if (!res.ok) throw new Error("IP Service Unreachable");
+    
+    const data = await res.json();
+    return { 
+        location: data.city ? `${data.city}, ${data.country}` : "Unknown Sector", 
+        localTime: new Date().toLocaleTimeString('en-US', { timeZone: data.timezone || 'UTC' }) 
+    };
+
+  } catch (e) {
+    // Fallback instantly if everything fails
+    return { location: "Digital Space", localTime: "Unknown" };
+  }
+}
+
+// --- 4. ⚡ MAIN SERVER ACTION ---
+export async function sendEmail(prevState: any, formData: FormData) {
+  try {
+    const ip = (await headers()).get("x-forwarded-for")?.split(',')[0] ?? "127.0.0.1";
+
+    // A. 🛡️ Security Check (Rate Limit)
+    if (ratelimit) {
+      const { success } = await ratelimit.limit(ip);
+      if (!success) {
+        return { success: false, message: "⚠️ System Busy. Please wait 1 minute before retrying." };
+      }
+    }
+
+    // B. 📥 Data Extraction & Sanitization
+    const rawData = {
+      name: (formData.get("name") as string) || "",
+      email: (formData.get("email") as string) || "",
+      message: (formData.get("message") as string) || "",
+    };
+
+    // C. 🕵️ Validation
+    const validated = contactFormSchema.safeParse(rawData);
+    if (!validated.success) {
+      return { success: false, message: validated.error.issues[0].message };
+    }
+
+    // D. 🧠 Context Enrichment
+    const userCtx = await getUserContext(ip);
+
+    // E. 🚀 Execution (Parallel Dispatch)
+    // Both emails fly out simultaneously.
+    await Promise.all([
+      sendAdminNotification(rawData, userCtx),
+      sendWelcomePack(rawData.email)
     ]);
 
-    return { success: true, message: "Transmission Successful" };
+    return { success: true, message: "Transmission Successful. Protocol Initiated." };
 
-  } catch (error: any) {
-    console.error("❌ EMAIL ERROR:", error);
-    return { success: false, message: "Email Service Failed." };
+  } catch (error) {
+    console.error("🔥 ACTION ERROR:", error);
+    return { success: false, message: "Network Error. Please try again later." };
   }
 }

@@ -5,7 +5,7 @@ import { motion, useAnimation } from "framer-motion";
 import { CheckCircle2, Fingerprint, Lock, Zap, ChevronRight } from "lucide-react";
 import toast from "react-hot-toast";
 
-// --- 🔊 SONIC ENGINE ---
+// --- 🔊 SONIC ENGINE (Fail-Safe) ---
 const playHoldSound = (type: 'charge' | 'release' | 'success') => {
     if (typeof window === 'undefined') return;
     try {
@@ -136,7 +136,7 @@ export default function HoldSubmitBtn({ onClick, loading, disabled }: { onClick:
   };
 
   return (
-    <div className="relative w-full h-24 mt-8 select-none touch-none">
+    <div className="relative w-full h-20 md:h-24 mt-8 select-none touch-none">
       
       {/* Button Container */}
       <motion.button
@@ -180,11 +180,11 @@ export default function HoldSubmitBtn({ onClick, loading, disabled }: { onClick:
         )}
 
         {/* 4. CONTENT LAYER (Mix Blend Mode for Contrast) */}
-        <div className="relative z-30 flex items-center justify-center gap-3 w-full h-full mix-blend-difference text-white">
+        <div className="relative z-30 flex items-center justify-center gap-3 md:gap-4 w-full h-full mix-blend-difference text-white px-4">
           {loading ? (
             <div className="flex items-center gap-3">
               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              <span className="text-sm font-black uppercase tracking-[0.2em] animate-pulse">ESTABLISHING UPLINK...</span>
+              <span className="text-xs md:text-sm font-black uppercase tracking-[0.2em] animate-pulse">ESTABLISHING UPLINK...</span>
             </div>
           ) : isComplete ? (
             <motion.div 
@@ -192,20 +192,20 @@ export default function HoldSubmitBtn({ onClick, loading, disabled }: { onClick:
                 animate={{ scale: 1, opacity: 1 }}
                 className="flex items-center gap-3"
             >
-              <CheckCircle2 className="w-8 h-8" />
-              <span className="text-lg font-black uppercase tracking-[0.2em]">ACCESS GRANTED</span>
+              <CheckCircle2 className="w-6 h-6 md:w-8 md:h-8" />
+              <span className="text-base md:text-lg font-black uppercase tracking-[0.2em]">ACCESS GRANTED</span>
             </motion.div>
           ) : (
             <>
-              {disabled ? <Lock className="w-6 h-6 opacity-50" /> : <Fingerprint className={`w-8 h-8 transition-all ${isHolding ? "scale-110 animate-pulse" : "opacity-50"}`} />}
+              {disabled ? <Lock className="w-5 h-5 md:w-6 md:h-6 opacity-50" /> : <Fingerprint className={`w-6 h-6 md:w-8 md:h-8 transition-all ${isHolding ? "scale-110 animate-pulse" : "opacity-50"}`} />}
               
               <div className="flex flex-col items-start">
-                  <span className="text-sm md:text-base font-black uppercase tracking-[0.2em] flex items-center gap-2">
+                  <span className="text-xs sm:text-sm md:text-base font-black uppercase tracking-[0.15em] md:tracking-[0.2em] flex items-center gap-2">
                     {disabled ? "INPUTS REQUIRED" : (progress > 0 ? "VERIFYING IDENTITY..." : "HOLD TO TRANSMIT")}
                     {!disabled && progress === 0 && <ChevronRight className="w-4 h-4 animate-bounce-x" />}
                   </span>
                   {!disabled && (
-                      <span className="text-[9px] font-mono tracking-widest hidden md:block opacity-60">
+                      <span className="text-[9px] font-mono tracking-widest hidden sm:block opacity-60">
                           {progress > 0 ? `NEURAL SYNC: ${Math.floor(progress)}%` : "SECURE CONNECTION READY"}
                       </span>
                   )}

@@ -112,6 +112,7 @@ const VideoCard = ({ video, index, onClick, scrollYProgress }: any) => {
     
     const skewY = useTransform(smoothVelocity, [-1000, 1000], isDesktop ? [-2, 2] : [0, 0]);
     
+    // 🔥 FIX: Staggered Parallax Effect for Grid
     const y = useTransform(
         scrollYProgress, 
         [0, 1], 
@@ -408,7 +409,7 @@ export default function MotionDesign() {
   const textRef = useRef<HTMLDivElement>(null);
   const [selectedVideo, setSelectedVideo] = useState<any | null>(null);
   
-  // Parallax Setup
+  // Parallax Setup for Grid Stagger
   const { scrollYProgress } = useScroll({ target: container, offset: ["start end", "end start"] });
 
   useEffect(() => {
@@ -462,15 +463,27 @@ export default function MotionDesign() {
         {/* DESKTOP GRID */}
         <div className="hidden lg:grid grid-cols-3 gap-8 px-4 perspective-[1000px]">
             {videos.map((video, i) => (
-                <VideoCard key={video.id} video={video} index={i} onClick={() => setSelectedVideo(video)} scrollYProgress={scrollYProgress} />
+                <VideoCard 
+                    key={video.id} 
+                    video={video} 
+                    index={i} 
+                    onClick={() => setSelectedVideo(video)} 
+                    scrollYProgress={scrollYProgress} 
+                />
             ))}
         </div>
 
         {/* MOBILE/TABLET SLIDER */}
-        <div className="lg:hidden flex overflow-x-auto snap-x snap-mandatory gap-4 pb-12 px-4 no-scrollbar">
+        {/* 🛠️ FIX: 'overscroll-x-contain' prevents page gestures */}
+        <div className="lg:hidden flex overflow-x-auto snap-x snap-mandatory gap-4 pb-12 px-4 no-scrollbar overscroll-x-contain">
             {videos.map((video, i) => (
                 <div key={video.id} className="min-w-[85vw] snap-center">
-                    <VideoCard video={video} index={i} onClick={() => setSelectedVideo(video)} scrollYProgress={scrollYProgress} />
+                    <VideoCard 
+                        video={video} 
+                        index={i} 
+                        onClick={() => setSelectedVideo(video)} 
+                        scrollYProgress={scrollYProgress} 
+                    />
                 </div>
             ))}
              <div className="min-w-[5vw] shrink-0" />

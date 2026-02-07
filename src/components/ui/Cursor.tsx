@@ -5,7 +5,6 @@ import {
   motion, 
   useMotionValue, 
   useSpring, 
-  useTransform, 
   AnimatePresence 
 } from "framer-motion";
 
@@ -15,12 +14,12 @@ export default function Cursor() {
   const [isClicking, setIsClicking] = useState(false);
   const [cursorText, setCursorText] = useState("");
 
-  // --- PHYSICS ENGINE (Optimized for fluid feel) ---
+  // --- PHYSICS ENGINE (Premium Weighted Feel) ---
   const mouseX = useMotionValue(-100);
   const mouseY = useMotionValue(-100);
 
-  // Smooth Spring for the Ring (Thoda peeche chalega)
-  const springConfig = { damping: 30, stiffness: 300, mass: 0.5 };
+  // ⚡ TWEAKED: Increased mass for a more "expensive" floaty feel
+  const springConfig = { damping: 25, stiffness: 400, mass: 0.8 };
   const smoothX = useSpring(mouseX, springConfig);
   const smoothY = useSpring(mouseY, springConfig);
 
@@ -29,7 +28,8 @@ export default function Cursor() {
     if (typeof window !== "undefined") {
       const checkMobile = () => window.matchMedia("(pointer: coarse)").matches;
       setIsMobile(checkMobile());
-      // Desktop hai toh cursor dikhao
+      
+      // Show cursor initially if on desktop
       if (!checkMobile()) setCursorState("default");
     }
   }, []);
@@ -45,14 +45,14 @@ export default function Cursor() {
       
       const target = e.target as HTMLElement;
       
-      // Check Elements
-      const isLink = target.closest("a, button, .clickable, [role='button'], input[type='submit'], input[type='button']");
-      const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable || target.tagName === "SELECT";
+      // Check Elements (Expanded Selector List)
+      const isLink = target.closest("a, button, .clickable, [role='button'], input[type='submit'], input[type='button'], label, select");
+      const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
       const customCursorData = target.closest("[data-cursor]");
 
       // --- LOGIC ---
       if (isInput) {
-         setCursorState("hidden"); // Typing karte waqt tang na kare
+         setCursorState("hidden"); // Typing focus (Hide cursor)
          setCursorText("");
       } else if (customCursorData) {
          setCursorState("hover");
@@ -93,12 +93,12 @@ export default function Cursor() {
     default: {
       height: 12,
       width: 12,
-      backgroundColor: "#E50914", // Brand Red
+      backgroundColor: "#E50914", // Brand Red Dot
       x: "-50%",
       y: "-50%",
       opacity: 1,
       mixBlendMode: "normal" as const,
-      scale: isClicking ? 0.8 : 1, // Click feedback
+      scale: isClicking ? 0.8 : 1, // Subtle click feedback
     },
     hover: {
       height: 60,
@@ -107,7 +107,7 @@ export default function Cursor() {
       x: "-50%",
       y: "-50%",
       opacity: 1,
-      mixBlendMode: "difference" as const, // Cool Invert Effect
+      mixBlendMode: "difference" as const, // The "Invert" effect on text
       scale: isClicking ? 0.9 : 1,
     },
     hidden: {
@@ -126,7 +126,8 @@ export default function Cursor() {
     <>
       {/* 1. THE SMOOTH RING (Follower) */}
       <motion.div
-        className="fixed top-0 left-0 z-[9999] pointer-events-none flex items-center justify-center rounded-full overflow-hidden"
+        // 🔥 Z-INDEX UPGRADE: 999999 ensures it's above everything (Command Menu, Modals)
+        className="fixed top-0 left-0 z-[999999] pointer-events-none flex items-center justify-center rounded-full overflow-hidden"
         style={{
           x: smoothX,
           y: smoothY,
@@ -141,7 +142,7 @@ export default function Cursor() {
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.8 }}
-                    className="text-[10px] font-black text-black tracking-widest uppercase text-center leading-none px-2"
+                    className="text-[10px] font-black text-black tracking-widest uppercase text-center leading-none px-2 whitespace-nowrap"
                 >
                     {cursorText}
                 </motion.span>
@@ -150,9 +151,9 @@ export default function Cursor() {
       </motion.div>
 
       {/* 2. THE TINY DOT (Instant Tracker) */}
-      {/* Yeh hamesha mouse ke exact neeche rahega bina lag ke */}
+      {/* Yeh hamesha mouse ke exact neeche rahega bina lag ke - Precision feel */}
       <motion.div 
-        className="fixed top-0 left-0 w-1.5 h-1.5 bg-white rounded-full z-[10000] pointer-events-none mix-blend-difference"
+        className="fixed top-0 left-0 w-1.5 h-1.5 bg-white rounded-full z-[1000000] pointer-events-none mix-blend-difference"
         style={{ 
             x: mouseX, 
             y: mouseY, 

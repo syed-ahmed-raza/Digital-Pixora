@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence, Variants } from "framer-motion";
+import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 
@@ -10,8 +10,23 @@ export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [mounted, setMounted] = useState(false); // 🔥 Prevents hydration mismatch
 
-  // --- 1. INTELLIGENT SCROLL ---
+  // --- 1. MOUNT & RESIZE LOGIC ---
+  useEffect(() => {
+    setMounted(true);
+    
+    const checkScreen = () => {
+        // 1024px is safer for tablets (iPad Mini/Air)
+        setIsMobile(window.innerWidth < 1024); 
+    };
+    
+    checkScreen();
+    window.addEventListener("resize", checkScreen);
+    return () => window.removeEventListener("resize", checkScreen);
+  }, []);
+
+  // --- 2. INTELLIGENT SCROLL ---
   useEffect(() => {
     const handleScroll = () => {
        setIsScrolled(window.scrollY > 20);
@@ -21,18 +36,11 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // --- 2. RESIZE LISTENER ---
-  useEffect(() => {
-    const checkScreen = () => setIsMobile(window.innerWidth <= 768);
-    checkScreen(); // Initial check
-    window.addEventListener("resize", checkScreen);
-    return () => window.removeEventListener("resize", checkScreen);
-  }, []);
-
   // --- 3. BODY LOCK (Menu Open Scroll Fix) ---
   useEffect(() => {
     if (isOpen) {
         document.body.style.overflow = "hidden";
+        // Optional: Stop Lenis if you have global access, but overflow:hidden usually works
     } else {
         document.body.style.overflow = "";
     }
@@ -46,7 +54,8 @@ export default function Navbar() {
   ];
 
   // Logic: Show full nav
-  const showFullNav = isMobile || !isScrolled || isHovered || isOpen;
+  // Fixed: !mounted check prevents flicker
+  const showFullNav = !mounted || isMobile || !isScrolled || isHovered || isOpen;
 
   // --- ANIMATION VARIANTS ---
   const mobileMenuVars: Variants = {
@@ -54,17 +63,17 @@ export default function Navbar() {
     animate: { 
         opacity: 1, 
         clipPath: "circle(150% at 100% 0%)",
-        transition: { duration: 0.5, ease: [0.32, 0, 0.67, 0] } 
+        transition: { duration: 0.7, ease: [0.19, 1, 0.22, 1] } // 'Out Expo' easing for premium feel
     },
     exit: { 
         opacity: 0, 
         clipPath: "circle(0% at 100% 0%)",
-        transition: { duration: 0.3, ease: [0.32, 0, 0.67, 0] } 
+        transition: { duration: 0.5, ease: [0.19, 1, 0.22, 1] } 
     },
   };
 
   const navLinkVars: Variants = {
-    initial: { y: 30, opacity: 0 },
+    initial: { y: 40, opacity: 0 },
     open: { 
         y: 0, 
         opacity: 1,
@@ -74,8 +83,11 @@ export default function Navbar() {
 
   const containerVars: Variants = {
     initial: { transition: { staggerChildren: 0.05 } },
-    open: { transition: { delayChildren: 0.1, staggerChildren: 0.1 } },
+    open: { transition: { delayChildren: 0.2, staggerChildren: 0.1 } },
   };
+
+  // Prevent hydration error by not rendering until mounted
+  if (!mounted) return null;
 
   return (
     <>
@@ -83,38 +95,42 @@ export default function Navbar() {
         initial={{ y: -100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-        className="fixed top-0 left-0 w-full z-[100] flex justify-center pt-3 md:pt-6 pointer-events-none px-4"
+        // 🔥 FIX: 'pt-safe' ensures it respects iPhone Notch/Dynamic Island
+        className="fixed top-0 left-0 w-full z-[100] flex justify-center pt-4 md:pt-6 pointer-events-none px-4"
       >
         {/* --- DYNAMIC ISLAND CONTAINER --- */}
         <motion.div 
-            layout={!isMobile} 
+            layout 
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
             className={`
                 pointer-events-auto relative flex items-center overflow-hidden
                 ${isScrolled || isOpen
-                  ? "bg-[#050505] border border-white/10 shadow-2xl shadow-black/50" 
+                  ? "bg-[#050505]/90 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)]" 
                   : "bg-transparent border-transparent"
                 }
                 ${!showFullNav ? "justify-center" : "justify-between"} 
                 /* 🚀 Performance Hack: Hardware Acceleration */
-                transform-gpu
+                transform-gpu backdrop-blur-xl
             `}
             initial={false}
             animate={{
                 width: isMobile 
-                    ? "100%" 
-                    : (showFullNav ? "100%" : "64px"),
+                    ? "100%" // Mobile: Full Width
+                    : (showFullNav ? "100%" : "64px"), // Desktop: Dynamic
                 height: "64px",
                 borderRadius: "50px",
                 padding: showFullNav 
                     ? (isMobile ? "0px 20px" : "0px 24px") 
                     : "0px",
                 maxWidth: showFullNav ? "1400px" : "64px",
-                // Glass effect only on Desktop when scrolled
-                backdropFilter: (isScrolled && !isMobile) ? "blur(12px)" : "none",
             }}
-            transition={{ type: "spring", stiffness: 200, damping: 25, mass: 0.8 }}
+            transition={{ 
+                type: "spring", 
+                stiffness: 220, 
+                damping: 30, 
+                mass: 0.8 
+            }}
         >
           {/* --- LOGO AREA --- */}
           <Link href="/" className="relative z-50 group shrink-0 flex items-center justify-center" onClick={() => setIsOpen(false)}>
@@ -158,9 +174,9 @@ export default function Navbar() {
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 10 }}
-                    className="hidden md:flex items-center gap-8 ml-auto pl-8 h-full"
+                    className="hidden lg:flex items-center gap-8 ml-auto pl-8 h-full"
                 >
-                    <div className="flex items-center gap-6 whitespace-nowrap">
+                    <div className="flex items-center gap-8 whitespace-nowrap">
                         {navLinks.map((link) => (
                         <Link key={link.name} href={link.href}>
                             <div className="relative overflow-hidden group py-2 cursor-pointer">
@@ -187,27 +203,30 @@ export default function Navbar() {
             )}
           </AnimatePresence>
 
-          {/* --- MOBILE HAMBURGER (Now Clickable) --- */}
-          <div className="md:hidden ml-auto flex items-center">
+          {/* --- MOBILE HAMBURGER --- */}
+          {/* Visible on Mobile/Tablet (lg:hidden) */}
+          <div className="lg:hidden ml-auto flex items-center">
             <button 
                 className={`
-                    relative z-[110] w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 active:scale-95
+                    relative z-[110] w-12 h-12 flex items-center justify-center rounded-full transition-all duration-300
                     ${isOpen ? "bg-white/10" : "bg-transparent"}
+                    /* Improved touch target for mobile */
+                    active:scale-95
                 `}
                 onClick={() => setIsOpen(!isOpen)}
                 aria-label="Toggle Menu"
             >
-                <div className="flex flex-col gap-1.5 items-end">
-                    <span className={`h-[2px] rounded-full bg-white transition-all duration-300 ${isOpen ? "w-5 rotate-45 translate-y-2 bg-[#E50914]" : "w-6"}`} />
-                    <span className={`h-[2px] rounded-full bg-white transition-all duration-300 ${isOpen ? "opacity-0 w-0" : "w-4"}`} />
-                    <span className={`h-[2px] rounded-full bg-white transition-all duration-300 ${isOpen ? "w-5 -rotate-45 -translate-y-2 bg-[#E50914]" : "w-6"}`} />
+                <div className="flex flex-col gap-1.5 items-end p-2">
+                    <span className={`h-[2px] rounded-full bg-white transition-all duration-300 ease-out-expo ${isOpen ? "w-5 rotate-45 translate-y-2 bg-[#E50914]" : "w-6"}`} />
+                    <span className={`h-[2px] rounded-full bg-white transition-all duration-300 ease-out-expo ${isOpen ? "opacity-0 w-0" : "w-4"}`} />
+                    <span className={`h-[2px] rounded-full bg-white transition-all duration-300 ease-out-expo ${isOpen ? "w-5 -rotate-45 -translate-y-2 bg-[#E50914]" : "w-6"}`} />
                 </div>
             </button>
           </div>
         </motion.div>
       </motion.nav>
 
-      {/* --- MOBILE MENU (Background) --- */}
+      {/* --- MOBILE MENU OVERLAY --- */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -215,30 +234,34 @@ export default function Navbar() {
             initial="initial"
             animate="animate"
             exit="exit"
-            // Z-Index 90 ensures it is BELOW the Navbar (Z-100) but ABOVE everything else
+            // Z-Index 90: Below Navbar (100) but covers everything else
             className="fixed inset-0 z-[90] bg-[#050505] flex flex-col justify-center px-6 overflow-hidden"
+            // 🔥 Stop Touch Propagation to prevent scrolling behind menu
+            onTouchMove={(e) => e.stopPropagation()} 
           >
-            {/* Background Glow */}
-            <div className="absolute top-[-50px] right-[-50px] w-[300px] h-[300px] bg-[#E50914] opacity-[0.1] rounded-full pointer-events-none blur-[80px]" />
-            <div className="absolute bottom-[-50px] left-[-50px] w-[200px] h-[200px] bg-blue-500 opacity-[0.05] rounded-full pointer-events-none blur-[60px]" />
-
-            <div className="relative z-10 flex flex-col h-full justify-between py-24 pb-32">
+            {/* Background Atmosphere */}
+            <div className="absolute top-0 right-0 w-[80vw] h-[80vw] bg-[#E50914] opacity-[0.05] rounded-full pointer-events-none blur-[100px] translate-x-1/2 -translate-y-1/2" />
+            
+            <div className="relative z-10 flex flex-col h-full justify-between pt-32 pb-10 safe-area-bottom">
                 <motion.div
                     variants={containerVars}
                     initial="initial"
                     animate="open"
                     exit="initial"
-                    className="flex flex-col gap-8"
+                    className="flex flex-col gap-2"
                 >
                     {navLinks.map((link) => (
                     <div key={link.name} className="overflow-hidden">
                         <motion.div variants={navLinkVars}>
                             <Link 
                                 href={link.href} 
-                                className="inline-block text-6xl font-black text-white uppercase tracking-tighter active:text-[#E50914] transition-colors"
+                                className="block w-full py-2"
                                 onClick={() => setIsOpen(false)}
                             >
-                                {link.name}
+                                {/* 🔥 FIX: Fluid Typography for preventing overflow on small screens */}
+                                <span className="text-[12vw] sm:text-[10vw] md:text-7xl font-black text-white uppercase tracking-tighter leading-[0.9] active:text-[#E50914] transition-colors">
+                                    {link.name}
+                                </span>
                             </Link>
                         </motion.div>
                     </div>
@@ -256,6 +279,12 @@ export default function Navbar() {
                             <ArrowUpRight className="w-6 h-6 text-white group-hover:rotate-45 transition-transform" />
                         </div>
                     </Link>
+                    
+                    {/* Social/Email for Mobile footer */}
+                    <div className="flex justify-between items-center text-white/40 text-sm font-medium pt-4">
+                        <span>hyd, sindh</span>
+                        <a href="mailto:hello@digitalpixora.com" className="hover:text-white transition-colors">hello@digitalpixora.com</a>
+                    </div>
                 </motion.div>
             </div>
           </motion.div>

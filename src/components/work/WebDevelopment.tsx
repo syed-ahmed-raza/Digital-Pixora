@@ -9,7 +9,7 @@ import { motion, useMotionTemplate, useMotionValue, useSpring } from "framer-mot
 
 // Plugin Register (Safe Check)
 if (typeof window !== "undefined") {
-    gsap.registerPlugin(ScrollTrigger);
+  gsap.registerPlugin(ScrollTrigger);
 }
 
 // --- DATA ---
@@ -74,6 +74,7 @@ const MasterCard = ({ project, index }: { project: any, index: number }) => {
         <div 
             ref={cardRef}
             onMouseMove={handleMouseMove}
+            // 🔥 Responsive Width: Cards shouldn't touch edges on large screens
             className="group relative w-[90vw] md:w-[85vw] lg:w-[80vw] max-w-[1400px] h-[60vh] md:h-[70vh] lg:h-[80vh] rounded-[2rem] md:rounded-[2.5rem] bg-[#050505] border border-white/5 overflow-hidden shadow-[0_0_60px_-15px_rgba(0,0,0,0.8)] will-change-transform"
         >
             {/* 1. IMAGE LAYER */}
@@ -149,11 +150,11 @@ export default function WebDevelopment() {
   const cardsRef = useRef<HTMLDivElement[]>([]);
   
   useLayoutEffect(() => {
-    // ⚡ Safe Refresh
+    // ⚡ Safe Refresh: Increased timeout for reliable painting
     const ctx = gsap.context(() => {
         setTimeout(() => {
             ScrollTrigger.refresh();
-        }, 500);
+        }, 800); 
     });
 
     const mm = gsap.matchMedia();
@@ -237,52 +238,52 @@ export default function WebDevelopment() {
       {/* --- MOBILE/TABLET VIEW (SNAP SCROLL) --- */}
       {/* 🛠️ FIX: 'overscroll-x-contain' prevents browser back-swipe on mobile */}
       {/* 🛠️ FIX: 'scroll-pl-4' ensures first card isn't stuck to edge */}
-      <div className="lg:hidden flex overflow-x-auto snap-x snap-mandatory scroll-pl-4 px-4 md:px-8 pb-12 pt-4 gap-4 md:gap-6 w-full items-center min-h-[70vh] no-scrollbar overscroll-x-contain">
+      <div className="lg:hidden flex overflow-x-auto snap-x snap-mandatory scroll-pl-6 px-6 pb-12 pt-4 gap-4 w-full items-center min-h-[70vh] no-scrollbar overscroll-x-contain">
         {projects.map((project, i) => (
-            <div key={i} className="min-w-[85vw] md:min-w-[60vw] snap-center">
-                <div className="relative w-full h-[55vh] md:h-[60vh] rounded-[1.5rem] md:rounded-[2rem] bg-[#050505] border border-white/10 overflow-hidden shadow-2xl active:scale-[0.98] transition-transform duration-200 group will-change-transform">
-                    
-                    {/* Mobile Header */}
-                    <div className="absolute top-5 left-5 right-5 z-30 flex justify-between items-center">
-                          <span className="text-[10px] font-mono text-white/50 font-bold">0{i + 1}</span>
-                          <span className="px-2 py-1 rounded-md bg-black/60 border border-white/10 text-[9px] text-white/90 font-bold uppercase tracking-wider backdrop-blur-md">
-                             {project.category}
-                          </span>
-                    </div>
+           <div key={i} className="min-w-[85vw] md:min-w-[60vw] snap-center">
+               <div className="relative w-full h-[55vh] md:h-[60vh] rounded-[1.5rem] md:rounded-[2rem] bg-[#050505] border border-white/10 overflow-hidden shadow-2xl active:scale-[0.98] transition-transform duration-200 group will-change-transform">
+                   
+                   {/* Mobile Header */}
+                   <div className="absolute top-5 left-5 right-5 z-30 flex justify-between items-center">
+                         <span className="text-[10px] font-mono text-white/50 font-bold">0{i + 1}</span>
+                         <span className="px-2 py-1 rounded-md bg-black/60 border border-white/10 text-[9px] text-white/90 font-bold uppercase tracking-wider backdrop-blur-md">
+                            {project.category}
+                         </span>
+                   </div>
 
-                    {/* Mobile Image */}
-                    <div className="absolute inset-0 bg-black z-0">
-                          <Image 
-                            fill 
-                            src={project.src} 
-                            alt={project.title} 
-                            // ⚡ OPTIMIZATION: Ensure high quality on mobile retina screens
-                            quality={85}
-                            sizes="(max-width: 768px) 85vw, 60vw"
-                            className="object-cover opacity-60 grayscale group-hover:grayscale-0 transition-all duration-700" 
-                        />
-                    </div>
+                   {/* Mobile Image */}
+                   <div className="absolute inset-0 bg-black z-0">
+                         <Image 
+                           fill 
+                           src={project.src} 
+                           alt={project.title} 
+                           // ⚡ OPTIMIZATION: Ensure high quality on mobile retina screens
+                           quality={85}
+                           sizes="(max-width: 768px) 85vw, 60vw"
+                           className="object-cover opacity-60 grayscale group-hover:grayscale-0 transition-all duration-700" 
+                       />
+                   </div>
 
-                    {/* Gradient Floor */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent z-20 pointer-events-none" />
-                    
-                    {/* Mobile Content */}
-                    <div className="absolute bottom-0 w-full p-6 md:p-8 z-30 flex flex-col gap-3">
-                        <h3 className="text-4xl md:text-5xl font-black text-white uppercase leading-none drop-shadow-lg">
-                            {project.title}
-                        </h3>
-                        <p className="text-white/70 text-xs md:text-sm line-clamp-2 font-light">
-                            {project.description}
-                        </p>
-                        
-                        <div className="mt-3 flex items-center gap-2">
-                             <a href={project.link} target="_blank" className="px-4 py-3 md:py-4 w-full text-center rounded-full bg-white text-black text-[10px] md:text-xs font-black uppercase tracking-widest hover:bg-[#E50914] hover:text-white transition-colors border border-transparent hover:border-[#E50914]">
-                                View Case Study
-                             </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                   {/* Gradient Floor */}
+                   <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent z-20 pointer-events-none" />
+                   
+                   {/* Mobile Content */}
+                   <div className="absolute bottom-0 w-full p-6 md:p-8 z-30 flex flex-col gap-3">
+                       <h3 className="text-4xl md:text-5xl font-black text-white uppercase leading-none drop-shadow-lg">
+                           {project.title}
+                       </h3>
+                       <p className="text-white/70 text-xs md:text-sm line-clamp-2 font-light">
+                           {project.description}
+                       </p>
+                       
+                       <div className="mt-3 flex items-center gap-2">
+                            <a href={project.link} target="_blank" className="px-4 py-3 md:py-4 w-full text-center rounded-full bg-white text-black text-[10px] md:text-xs font-black uppercase tracking-widest hover:bg-[#E50914] hover:text-white transition-colors border border-transparent hover:border-[#E50914]">
+                               View Case Study
+                            </a>
+                       </div>
+                   </div>
+               </div>
+           </div>
         ))}
         {/* Spacer for scroll padding */}
         <div className="min-w-[4vw] shrink-0" />
