@@ -15,6 +15,8 @@ export const BackgroundBeams = () => {
     let w = canvas.width;
     let h = canvas.height;
     let particles: Particle[] = [];
+    let animationFrameId: number;
+    let resizeTimeout: NodeJS.Timeout;
     
     // Mouse state
     const mouse = { x: -9999, y: -9999 };
@@ -133,7 +135,7 @@ export const BackgroundBeams = () => {
         }
       });
 
-      requestAnimationFrame(animate);
+      animationFrameId = requestAnimationFrame(animate);
     };
 
     // Event Listeners
@@ -151,8 +153,24 @@ export const BackgroundBeams = () => {
         }
     };
 
+    const handleTouchEnd = () => {
+        // Reset mouse position off-screen so particles stop connecting
+        mouse.x = -9999;
+        mouse.y = -9999;
+    };
+
+    let prevWidth = window.innerWidth;
+
     const handleResize = () => {
-        init();
+        // 🔥 MOBILE SCROLL FIX: Only resize if WIDTH changes.
+        // Ignores vertical resizes caused by address bar hiding/showing.
+        if (window.innerWidth !== prevWidth) {
+            prevWidth = window.innerWidth;
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                init();
+            }, 100);
+        }
     };
 
     // Initialize
@@ -162,11 +180,16 @@ export const BackgroundBeams = () => {
     window.addEventListener("resize", handleResize);
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("touchmove", handleTouchMove, { passive: true });
+    window.addEventListener("touchend", handleTouchEnd);
 
+    // CLEANUP (Crucial for SPA Performance)
     return () => {
       window.removeEventListener("resize", handleResize);
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleTouchEnd);
+      cancelAnimationFrame(animationFrameId);
+      clearTimeout(resizeTimeout);
     };
   }, []);
 

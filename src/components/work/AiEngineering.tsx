@@ -3,7 +3,7 @@
 import React, { useRef, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
-import { useScroll, useTransform, motion, useSpring, useMotionValue, AnimatePresence, useMotionTemplate, useInView } from "framer-motion";
+import { useScroll, useTransform, motion, useSpring, useMotionValue, AnimatePresence, useInView } from "framer-motion";
 import { Terminal, Cpu, X, Minus, Plus, RefreshCcw, Loader2, Maximize2, Sparkles, Fingerprint, ScanLine } from "lucide-react";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 
@@ -56,13 +56,16 @@ const AiLightbox = ({ item, onClose }: { item: any, onClose: () => void }) => {
         const handleKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
         window.addEventListener('keydown', handleKeyDown);
         document.body.style.overflow = "hidden"; 
+        // 🔥 FIX: Prevent scroll bleed on mobile
+        document.body.style.touchAction = "none";
+        
         return () => { 
             window.removeEventListener('keydown', handleKeyDown);
             document.body.style.overflow = "auto";
+            document.body.style.touchAction = "auto";
         };
     }, [onClose]);
 
-    // Check for document existence to prevent SSR errors
     if (typeof document === 'undefined') return null;
 
     return createPortal(
@@ -70,7 +73,8 @@ const AiLightbox = ({ item, onClose }: { item: any, onClose: () => void }) => {
             initial={{ opacity: 0 }} 
             animate={{ opacity: 1 }} 
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[9999] bg-[#050505]/98 backdrop-blur-3xl flex flex-col items-center justify-center overflow-hidden"
+            // 🔥 FIX: z-[999999] ensures it's above everything (Navbar, Cursor)
+            className="fixed inset-0 z-[999999] bg-[#050505]/98 backdrop-blur-3xl flex flex-col items-center justify-center overflow-hidden touch-none"
             onClick={onClose}
         >
             {/* Header */}
@@ -167,7 +171,6 @@ const AiCard = ({ item, isMobile = false, onClick }: { item: any, isMobile?: boo
     const mouseX = useSpring(x, { stiffness: 150, damping: 15 });
     const mouseY = useSpring(y, { stiffness: 150, damping: 15 });
     
-    // Subtle, professional tilt
     const rotateX = useTransform(mouseY, [-0.5, 0.5], ["3deg", "-3deg"]);
     const rotateY = useTransform(mouseX, [-0.5, 0.5], ["-3deg", "3deg"]);
 
@@ -191,12 +194,10 @@ const AiCard = ({ item, isMobile = false, onClick }: { item: any, isMobile?: boo
 
     // ⚡ OPTIMIZED TYPEWRITER: Only types when visible
     useEffect(() => {
-        // Mobile: Type only if InView. Desktop: Type only if Hovered.
         const shouldType = isMobile ? isInView : isHovered;
 
         if (shouldType) {
             let currentIndex = 0;
-            // Agar pehle se type hua hai to reset na karein (User experience)
             if (!displayedPrompt) setDisplayedPrompt("");
             
             if (typingInterval.current) clearInterval(typingInterval.current);
@@ -213,7 +214,6 @@ const AiCard = ({ item, isMobile = false, onClick }: { item: any, isMobile?: boo
                 }
             }, 15);
         } else {
-            // Reset logic removed for mobile to keep text visible once typed (better UX)
             if (!isMobile) {
                 if (typingInterval.current) clearInterval(typingInterval.current);
                 setDisplayedPrompt(""); 
@@ -281,7 +281,6 @@ const AiCard = ({ item, isMobile = false, onClick }: { item: any, isMobile?: boo
             </div>
 
             {/* ⌨️ PROMPT TERMINAL (Frosted Glass) */}
-            {/* Show on Mobile (if InView) or Desktop (Hover) */}
             <div className={`absolute bottom-0 left-0 w-full p-6 md:p-8 z-40 transition-all duration-500 ease-out pointer-events-none 
                 ${isMobile ? (isInView ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0') : 'translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100'}
             `}>
@@ -353,7 +352,6 @@ export default function AiEngineering() {
 
       {/* --- DESKTOP GRID --- */}
       <div className="hidden md:flex justify-center gap-8 lg:gap-12 min-h-[100vh] px-[2vw] lg:px-[8vw]">
-        {/* ⚡ Added will-change-transform for smooth parallax */}
         <motion.div style={{ y: y1 }} className="flex flex-col gap-12 w-1/2 will-change-transform">
             {col1.map((item, i) => <AiCard key={i} item={item} onClick={() => setSelectedItem(item)} />)}
         </motion.div>
@@ -364,7 +362,8 @@ export default function AiEngineering() {
       </div>
 
       {/* --- MOBILE SWIPE --- */}
-      <div className="md:hidden flex overflow-x-auto snap-x snap-mandatory gap-4 pb-12 px-4 no-scrollbar">
+      {/* 🔥 FIX: 'overscroll-x-contain' prevents browser navigation gestures */}
+      <div className="md:hidden flex overflow-x-auto snap-x snap-mandatory gap-4 pb-12 px-4 no-scrollbar overscroll-x-contain">
          {aiImages.map((item, i) => (
              <div key={i} className="relative min-w-[85vw] h-[60vh] snap-center shrink-0">
                  <AiCard item={item} isMobile={true} onClick={() => setSelectedItem(item)} />

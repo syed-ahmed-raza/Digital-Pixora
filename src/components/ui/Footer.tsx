@@ -12,16 +12,16 @@ import {
 } from "framer-motion";
 import { ArrowUp, ArrowUpRight, Instagram, Linkedin, Twitter, Radio, Clock, Command } from "lucide-react";
 
-// ✅ IMPORT COMMAND MENU (Make sure this component exists, or remove if not needed)
+// ✅ IMPORT COMMAND MENU (Assuming you have this component)
 import CommandMenu from "@/components/ui/CommandMenu";
 
-// --- 🛠️ UTILITY: Wrap Function (Dependency-Free) ---
+// --- 🛠️ UTILITY: Wrap Function ---
 const wrap = (min: number, max: number, v: number) => {
   const rangeSize = max - min;
   return ((((v - min) % rangeSize) + rangeSize) % rangeSize) + min;
 };
 
-// --- 1. LIVE CLOCK COMPONENT (Hydration Safe - PKT Fixed) ---
+// --- 1. LIVE CLOCK COMPONENT (Hydration Safe - PKT) ---
 const LiveClock = () => {
     const [time, setTime] = useState<string>("--:--:--");
     const [mounted, setMounted] = useState(false);
@@ -31,7 +31,7 @@ const LiveClock = () => {
         const updateTime = () => {
             const now = new Date();
             const options: Intl.DateTimeFormatOptions = { 
-                timeZone: 'Asia/Karachi', // 🔥 Locked to HQ Time
+                timeZone: 'Asia/Karachi', 
                 hour: '2-digit', 
                 minute: '2-digit', 
                 second: '2-digit',
@@ -45,7 +45,6 @@ const LiveClock = () => {
         return () => clearInterval(interval);
     }, []);
 
-    // Prevent Server/Client Mismatch
     if (!mounted) return <span className="font-mono tabular-nums opacity-50">--:--:--</span>;
     return <span className="font-mono tabular-nums">{time}</span>;
 };
@@ -63,7 +62,6 @@ function ParallaxText({ children, baseVelocity = 100 }: ParallaxProps) {
   const smoothVelocity = useSpring(scrollVelocity, { damping: 50, stiffness: 400 });
   const velocityFactor = useTransform(smoothVelocity, [0, 1000], [0, 5], { clamp: false });
 
-  // Wrap range optimized for smoother loop
   const x = useTransform(baseX, (v) => `${wrap(-20, -45, v)}%`);
 
   const directionFactor = useRef<number>(1);
@@ -93,21 +91,20 @@ function ParallaxText({ children, baseVelocity = 100 }: ParallaxProps) {
   );
 }
 
-// --- 3. MAGNETIC SOCIAL BUTTON (Safe & Optimized) ---
+// --- 3. MAGNETIC SOCIAL BUTTON (Mobile Optimized) ---
 const MagneticSocial = ({ children, href }: { children: React.ReactNode, href: string }) => {
     const ref = useRef<HTMLAnchorElement>(null);
     const [position, setPosition] = useState({ x: 0, y: 0 });
-    const [isMobile, setIsMobile] = useState(false);
+    const [isDesktop, setIsDesktop] = useState(false);
 
     useEffect(() => {
-        setIsMobile(window.innerWidth < 1024);
+        setIsDesktop(window.innerWidth > 1024);
     }, []);
 
     const handleMouse = (e: React.MouseEvent) => {
-        if (!ref.current || isMobile) return; // Disable on mobile
+        if (!ref.current || !isDesktop) return; 
         const { clientX, clientY } = e;
         const { height, width, left, top } = ref.current.getBoundingClientRect();
-        // Magnetic Strength: 0.5 (Strong but controlled)
         setPosition({ x: (clientX - (left + width / 2)) * 0.5, y: (clientY - (top + height / 2)) * 0.5 });
     };
 
@@ -121,7 +118,7 @@ const MagneticSocial = ({ children, href }: { children: React.ReactNode, href: s
             onMouseLeave={() => setPosition({ x: 0, y: 0 })}
             animate={{ x: position.x, y: position.y }}
             transition={{ type: "spring", stiffness: 150, damping: 15, mass: 0.1 }}
-            className="relative w-14 h-14 flex items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/40 hover:text-white hover:border-[#E50914] hover:bg-[#E50914] transition-all duration-300 group cursor-pointer active:scale-95"
+            className="relative w-12 h-12 md:w-14 md:h-14 flex items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/40 hover:text-white hover:border-[#E50914] hover:bg-[#E50914] transition-all duration-300 group cursor-pointer active:scale-95"
         >
             <div className="relative z-10 group-hover:scale-110 transition-transform duration-300">{children}</div>
         </motion.a>
@@ -145,7 +142,6 @@ export default function Footer() {
   const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
 
   const triggerCommandMenu = () => {
-      // Simulate CMD+K event to trigger the Command Menu component
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, ctrlKey: true }));
   };
 
@@ -174,7 +170,7 @@ export default function Footer() {
           </ParallaxText>
       </div>
 
-      <div className="relative z-10 max-w-[1600px] w-full mx-auto px-6 md:px-12 pb-12">
+      <div className="relative z-10 max-w-[1600px] w-full mx-auto px-6 md:px-12 pb-safe md:pb-12">
           
           <div className="grid grid-cols-1 md:grid-cols-12 gap-12 lg:gap-16 border-b border-white/10 pb-16">
               
@@ -261,17 +257,17 @@ export default function Footer() {
           </div>
 
           {/* BOTTOM BAR */}
-          <div className="flex flex-col-reverse md:flex-row justify-between items-center gap-6 pt-12">
+          <div className="flex flex-col-reverse md:flex-row justify-between items-center gap-6 pt-12 pb-safe">
               <p className="text-white/20 text-[10px] font-bold uppercase tracking-widest text-center md:text-left">
                 © {year || "----"} Digital Pixora. All Rights Reserved.
               </p>
               
               <div className="flex items-center gap-8">
-                  <button onClick={scrollToTop} className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-white/50 hover:text-[#E50914] transition-colors group">
+                  <button onClick={scrollToTop} className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-white/50 hover:text-[#E50914] transition-colors group p-2">
                       Back to Top <ArrowUp className="w-4 h-4 group-hover:-translate-y-1 transition-transform" />
                   </button>
                   
-                  {/* CLICKABLE COMMAND BUTTON */}
+                  {/* CLICKABLE COMMAND BUTTON (Desktop Only) */}
                   <button 
                     onClick={triggerCommandMenu}
                     className="hidden md:flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 bg-white/5 cursor-pointer hover:bg-white/10 active:scale-95 transition-all select-none group"

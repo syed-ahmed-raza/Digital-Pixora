@@ -3,10 +3,12 @@ import { Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import ClientLayout from "@/components/ClientLayout";
 
+// 🔥 OPTIMIZED FONT LOADING
 const spaceGrotesk = Space_Grotesk({ 
   subsets: ["latin"],
   variable: "--font-space",
   display: "swap",
+  weight: ["300", "400", "500", "600", "700"], // Preload specific weights
 });
 
 export const metadata: Metadata = {
@@ -25,21 +27,36 @@ export const metadata: Metadata = {
     shortcut: "/favicon-16x16.png",
     apple: "/apple-touch-icon.png",
   },
-  // Added viewport-fit=cover for full immersion on notched phones
+  manifest: "/site.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
+    title: "Digital Pixora",
+  },
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "https://digitalpixora.com",
+    siteName: "Digital Pixora",
+    images: [
+      {
+        url: "/og-image.jpg", // Make sure this image exists in public folder
+        width: 1200,
+        height: 630,
+        alt: "Digital Pixora - The Future of Tech",
+      },
+    ],
   },
 };
 
-// 🔥 Boss Level Viewport Settings
+// 🔥 BOSS LEVEL VIEWPORT (Mobile Immersion)
 export const viewport: Viewport = {
-  themeColor: "#050505",
+  themeColor: "#020202",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 5, // Accessbility best practice: allow pinch zoom if needed, but layout won't break
+  maximumScale: 5, 
   userScalable: true, 
-  viewportFit: "cover", // Ensures bg covers the notch area
+  viewportFit: "cover", // Ensures content goes behind the Notch
 };
 
 export default function RootLayout({
@@ -48,7 +65,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning className="bg-[#020202]">
+    <html lang="en" suppressHydrationWarning className="bg-[#020202] scroll-smooth">
       <body 
         className={`
           ${spaceGrotesk.className} 
@@ -57,6 +74,9 @@ export default function RootLayout({
           selection:bg-[#E50914] selection:text-white
         `}
       > 
+        {/* Main Logic moved to ClientLayout. 
+           SmoothScroll component is removed to prevent Double Scroll.
+        */}
         <ClientLayout>
           {children}
         </ClientLayout>

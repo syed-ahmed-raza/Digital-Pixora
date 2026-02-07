@@ -106,45 +106,53 @@ function analyzeLeadQuality(message: string) {
 }
 
 // --- 6. 🚀 THE "SINGULARITY" ENGINE (DYNAMIC AUTO-DISCOVERY) ---
-// No hardcoded models. It finds what's working and uses it.
 async function generateResponseStream(messages: any[], systemPrompt: string, mood: 'neutral' | 'angry' | 'happy') {
+  // Start from a random key to distribute load
   const startIndex = Math.floor(Math.random() * allKeys.length);
   const dynamicTemp = mood === 'angry' ? 0.2 : (mood === 'happy' ? 0.85 : 0.7);
 
-  // 🔄 STRATEGY: Loop through EVERY API Key
+  // 🔄 STRATEGY: Loop through EVERY API Key available
   for (let i = 0; i < allKeys.length; i++) {
     const keyIndex = (startIndex + i) % allKeys.length;
     const currentKey = allKeys[keyIndex];
 
     try {
-        // 📡 STEP 1: Scout Mission - Ask Google "What models do you have for this key?"
+        // 📡 STEP 1: Scout Mission - Ask Google "What models do you have?"
+        // Hum khud models define nahi karenge, Google se list mangwayenge.
         const listReq = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${currentKey}`, { signal: AbortSignal.timeout(4000) });
         
-        if (!listReq.ok) continue; // Key dead? Next key.
+        if (!listReq.ok) continue; // Key dead? Next key immediately.
         
         const data = await listReq.json();
         let models = data.models || [];
 
         // 🛡️ STEP 2: Intelligent Filtering (Only Chat Models)
+        // Sirf wahi models uthao jo 'gemini' hon aur 'generateContent' support karein.
         models = models.filter((m: any) => 
             m.name.toLowerCase().includes("gemini") && 
             m.supportedGenerationMethods.includes("generateContent")
         );
         
-        // 🧠 STEP 3: Rank Models (Pro is smarter -> Flash is faster)
+        // 🧠 STEP 3: Dynamic Ranking (Smarter models first)
+        // Hum prefer karenge 'pro' ya '1.5' wale models agar available hon.
         models.sort((a: any, b: any) => {
             const nA = a.name.toLowerCase();
             const nB = b.name.toLowerCase();
+            // Prioritize newer/pro models
+            if (nA.includes("1.5") && !nB.includes("1.5")) return -1;
             if (nA.includes("pro") && !nB.includes("pro")) return -1;
-            if (!nA.includes("pro") && nB.includes("pro")) return 1;
             return 0;
         });
 
-        // 🔄 STEP 4: Try Every Available Model
+        // 🔄 STEP 4: Try Every Available Model on this Key
         for (const modelInfo of models) {
+            // "models/gemini-pro" -> "gemini-pro"
             const modelName = modelInfo.name.replace("models/", ""); 
+            
             try {
                 const genAI = new GoogleGenerativeAI(currentKey);
+                
+                // Initialize whatever model Google gave us
                 const model = genAI.getGenerativeModel({ 
                     model: modelName,
                     generationConfig: { temperature: dynamicTemp, topK: 40 },
@@ -173,14 +181,17 @@ async function generateResponseStream(messages: any[], systemPrompt: string, moo
                 return result; // 🏆 VICTORY: Stream Established.
 
             } catch (innerError) { 
-                continue; // Model failed? Next model.
+                // Model failed (Limit/Overload)? Try next model in list.
+                continue; 
             }
         }
     } catch (outerError) {
-        continue; // Key failed? Next key.
+        // Key failed completely? Try next key in list.
+        continue; 
     }
   }
   
+  // 💀 END OF LINE: If every key and every model fails (Highly Unlikely)
   throw new Error("SYSTEM CRITICAL: ALL NEURAL PATHS BLOCKED.");
 }
 
@@ -200,7 +211,6 @@ export async function POST(req: Request) {
     const { messages, type } = body; 
     
     // 🛑 STOP: GHOST DUMP PROTOCOL (ABSOLUTE BLOCK)
-    // Agar yeh "dump" request hai, toh usay yahi khatam kar do.
     if (type === "dump" || type === "inactivity_autosave") {
         return new Response("Dump Protocol Disabled", { status: 200 });
     }
@@ -209,7 +219,7 @@ export async function POST(req: Request) {
     const lastUserMsg = messages[messages.length - 1]?.content.toLowerCase() || "";
     const { score: leadScore, mood } = analyzeLeadQuality(lastUserMsg);
     
-    // --- 🕵️ COVERT CONTACT CAPTURE (ONLY VALID EMAILS) ---
+    // --- 🕵️ COVERT CONTACT CAPTURE ---
     const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/;
     const phoneRegex = /(\+92\s?\d{3}|03\d{2})\s?\d{7}/;
     const contactMatch = lastUserMsg.match(emailRegex) || lastUserMsg.match(phoneRegex);
@@ -222,13 +232,13 @@ export async function POST(req: Request) {
       const contact = contactMatch[0];
       const fullTranscript = compileChatTranscript(messages, userCtx, leadScore);
 
-      // ✅ ACTION 1: User asked for info -> Send Auto-Reply
+      // ✅ ACTION 1: Send Auto-Reply
       if (hasExplicitIntent && contact.includes("@")) {
         await sendWelcomePack(contact);
         emailActionLog = "✅ CONFIRMED: Welcome Pack Sent.";
       } 
       
-      // ✅ ACTION 2: Valid Lead Detected -> Alert Admin (ONLY HERE)
+      // ✅ ACTION 2: Alert Admin
       await sendSpyAlert(
         fullTranscript, 
         `🔥 HOT LEAD FOUND: ${contact}`, 
@@ -295,7 +305,7 @@ export async function POST(req: Request) {
       **FORMATTING:** Use **Bold** for impact. Use Lists for clarity.
     `;
 
-    // 🔥 EXECUTE OMEGA MODE
+    // 🔥 EXECUTE OMEGA MODE (Auto-Discovery)
     const result = await generateResponseStream(messages, systemPrompt, mood);
     
     // 🔥 STREAM RESPONSE
@@ -318,6 +328,7 @@ export async function POST(req: Request) {
 
   } catch (error) {
     console.error("🔥 UNIVERSE COLLAPSE:", error);
+    // Even if everything fails, send a polite fallback
     return new Response("System overloaded. Please refresh.", { status: 500 });
   }
 }

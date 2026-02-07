@@ -10,15 +10,17 @@ export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [mounted, setMounted] = useState(false); // 🔥 Prevents hydration mismatch
+  const [mounted, setMounted] = useState(false);
 
   // --- 1. MOUNT & RESIZE LOGIC ---
   useEffect(() => {
     setMounted(true);
-    
     const checkScreen = () => {
-        // 1024px is safer for tablets (iPad Mini/Air)
-        setIsMobile(window.innerWidth < 1024); 
+      // 1024px is safer for tablets (iPad Mini/Air)
+      setIsMobile(window.innerWidth < 1024);
+      if (window.innerWidth >= 1024) {
+        setIsOpen(false); // Close mobile menu if resized to desktop
+      }
     };
     
     checkScreen();
@@ -39,12 +41,17 @@ export default function Navbar() {
   // --- 3. BODY LOCK (Menu Open Scroll Fix) ---
   useEffect(() => {
     if (isOpen) {
+        // Strict overflow hidden for all devices
         document.body.style.overflow = "hidden";
-        // Optional: Stop Lenis if you have global access, but overflow:hidden usually works
+        document.documentElement.style.overflow = "hidden"; // Extra safety for iOS
     } else {
         document.body.style.overflow = "";
+        document.documentElement.style.overflow = "";
     }
-    return () => { document.body.style.overflow = ""; };
+    return () => { 
+        document.body.style.overflow = "";
+        document.documentElement.style.overflow = "";
+    };
   }, [isOpen]);
 
   const navLinks = [
@@ -54,7 +61,6 @@ export default function Navbar() {
   ];
 
   // Logic: Show full nav
-  // Fixed: !mounted check prevents flicker
   const showFullNav = !mounted || isMobile || !isScrolled || isHovered || isOpen;
 
   // --- ANIMATION VARIANTS ---
@@ -63,7 +69,7 @@ export default function Navbar() {
     animate: { 
         opacity: 1, 
         clipPath: "circle(150% at 100% 0%)",
-        transition: { duration: 0.7, ease: [0.19, 1, 0.22, 1] } // 'Out Expo' easing for premium feel
+        transition: { duration: 0.7, ease: [0.19, 1, 0.22, 1] } // Premium 'Out Expo'
     },
     exit: { 
         opacity: 0, 
@@ -86,7 +92,6 @@ export default function Navbar() {
     open: { transition: { delayChildren: 0.2, staggerChildren: 0.1 } },
   };
 
-  // Prevent hydration error by not rendering until mounted
   if (!mounted) return null;
 
   return (
@@ -95,8 +100,8 @@ export default function Navbar() {
         initial={{ y: -100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-        // 🔥 FIX: 'pt-safe' ensures it respects iPhone Notch/Dynamic Island
-        className="fixed top-0 left-0 w-full z-[100] flex justify-center pt-4 md:pt-6 pointer-events-none px-4"
+        // 🔥 FIX: 'pt-safe' is critical for notched phones
+        className="fixed top-0 left-0 w-full z-[100] flex justify-center pt-safe mt-4 md:mt-6 pointer-events-none px-4"
       >
         {/* --- DYNAMIC ISLAND CONTAINER --- */}
         <motion.div 
@@ -110,14 +115,13 @@ export default function Navbar() {
                   : "bg-transparent border-transparent"
                 }
                 ${!showFullNav ? "justify-center" : "justify-between"} 
-                /* 🚀 Performance Hack: Hardware Acceleration */
                 transform-gpu backdrop-blur-xl
             `}
             initial={false}
             animate={{
                 width: isMobile 
-                    ? "100%" // Mobile: Full Width
-                    : (showFullNav ? "100%" : "64px"), // Desktop: Dynamic
+                    ? "100%" // Mobile: Always Full Width for safety
+                    : (showFullNav ? "100%" : "64px"), 
                 height: "64px",
                 borderRadius: "50px",
                 padding: showFullNav 
@@ -133,7 +137,8 @@ export default function Navbar() {
             }}
         >
           {/* --- LOGO AREA --- */}
-          <Link href="/" className="relative z-50 group shrink-0 flex items-center justify-center" onClick={() => setIsOpen(false)}>
+          {/* Added onClick to close menu if logo is clicked */}
+          <Link href="/" className="relative z-50 group shrink-0 flex items-center justify-center cursor-pointer" onClick={() => setIsOpen(false)}>
              <motion.div layout="position" className="flex items-center justify-center h-full">
                 <AnimatePresence mode="wait">
                     {showFullNav ? (
@@ -204,19 +209,17 @@ export default function Navbar() {
           </AnimatePresence>
 
           {/* --- MOBILE HAMBURGER --- */}
-          {/* Visible on Mobile/Tablet (lg:hidden) */}
           <div className="lg:hidden ml-auto flex items-center">
             <button 
                 className={`
                     relative z-[110] w-12 h-12 flex items-center justify-center rounded-full transition-all duration-300
                     ${isOpen ? "bg-white/10" : "bg-transparent"}
-                    /* Improved touch target for mobile */
-                    active:scale-95
+                    active:scale-95 touch-manipulation
                 `}
                 onClick={() => setIsOpen(!isOpen)}
                 aria-label="Toggle Menu"
             >
-                <div className="flex flex-col gap-1.5 items-end p-2">
+                <div className="flex flex-col gap-1.5 items-end p-2 pointer-events-none">
                     <span className={`h-[2px] rounded-full bg-white transition-all duration-300 ease-out-expo ${isOpen ? "w-5 rotate-45 translate-y-2 bg-[#E50914]" : "w-6"}`} />
                     <span className={`h-[2px] rounded-full bg-white transition-all duration-300 ease-out-expo ${isOpen ? "opacity-0 w-0" : "w-4"}`} />
                     <span className={`h-[2px] rounded-full bg-white transition-all duration-300 ease-out-expo ${isOpen ? "w-5 -rotate-45 -translate-y-2 bg-[#E50914]" : "w-6"}`} />
@@ -234,10 +237,10 @@ export default function Navbar() {
             initial="initial"
             animate="animate"
             exit="exit"
-            // Z-Index 90: Below Navbar (100) but covers everything else
-            className="fixed inset-0 z-[90] bg-[#050505] flex flex-col justify-center px-6 overflow-hidden"
-            // 🔥 Stop Touch Propagation to prevent scrolling behind menu
-            onTouchMove={(e) => e.stopPropagation()} 
+            // 🔥 FIX: h-[100dvh] ensures it fits mobile viewport perfectly including address bar
+            className="fixed inset-0 z-[90] bg-[#050505] flex flex-col justify-center px-6 h-[100dvh] w-screen touch-none"
+            // Prevent scroll pass-through
+            style={{ touchAction: "none" }}
           >
             {/* Background Atmosphere */}
             <div className="absolute top-0 right-0 w-[80vw] h-[80vw] bg-[#E50914] opacity-[0.05] rounded-full pointer-events-none blur-[100px] translate-x-1/2 -translate-y-1/2" />
@@ -258,8 +261,11 @@ export default function Navbar() {
                                 className="block w-full py-2"
                                 onClick={() => setIsOpen(false)}
                             >
-                                {/* 🔥 FIX: Fluid Typography for preventing overflow on small screens */}
-                                <span className="text-[12vw] sm:text-[10vw] md:text-7xl font-black text-white uppercase tracking-tighter leading-[0.9] active:text-[#E50914] transition-colors">
+                                {/* 🔥 GOLD TIER FIX: Clamp font size ensures no break on small/large mobiles */}
+                                <span 
+                                    className="block font-black text-white uppercase tracking-tighter leading-[0.9] active:text-[#E50914] transition-colors"
+                                    style={{ fontSize: "clamp(3rem, 12vw, 5.5rem)" }} 
+                                >
                                     {link.name}
                                 </span>
                             </Link>
@@ -281,7 +287,7 @@ export default function Navbar() {
                     </Link>
                     
                     {/* Social/Email for Mobile footer */}
-                    <div className="flex justify-between items-center text-white/40 text-sm font-medium pt-4">
+                    <div className="flex justify-between items-center text-white/40 text-sm font-medium pt-4 pb-safe">
                         <span>hyd, sindh</span>
                         <a href="mailto:hello@digitalpixora.com" className="hover:text-white transition-colors">hello@digitalpixora.com</a>
                     </div>

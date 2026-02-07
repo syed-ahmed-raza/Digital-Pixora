@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Mic, Zap, Users, 
   Trash2, Command, 
-  Terminal, Globe, ChevronRight, ArrowUp, ArrowDown
+  Terminal, Globe, ChevronRight, ArrowUp
 } from "lucide-react";
 
 interface ChatInputProps {

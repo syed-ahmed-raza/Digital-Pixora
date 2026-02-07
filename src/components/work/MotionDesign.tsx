@@ -56,7 +56,6 @@ const VideoCard = ({ video, index, onClick, scrollYProgress }: any) => {
     const cardRef = useRef<HTMLDivElement>(null);
     const [isDesktop, setIsDesktop] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
-    const [isVisible, setIsVisible] = useState(false);
 
     // Detect Device
     useEffect(() => {
@@ -66,16 +65,14 @@ const VideoCard = ({ video, index, onClick, scrollYProgress }: any) => {
         return () => window.removeEventListener('resize', check);
     }, []);
 
-    // ⚡ SMART AUTOPLAY: Mobile Performance
+    // ⚡ SMART AUTOPLAY: Intersection Observer (Battery Friendly)
     useEffect(() => {
         if (isDesktop) return;
 
         const observer = new IntersectionObserver(
             ([entry]) => {
-                setIsVisible(entry.isIntersecting);
                 if (videoRef.current) {
                     if (entry.isIntersecting) {
-                        // ⚡ FIX: Play promise handling for mobile browsers
                         const playPromise = videoRef.current.play();
                         if (playPromise !== undefined) {
                             playPromise.catch(() => {});
@@ -112,7 +109,6 @@ const VideoCard = ({ video, index, onClick, scrollYProgress }: any) => {
     
     const skewY = useTransform(smoothVelocity, [-1000, 1000], isDesktop ? [-2, 2] : [0, 0]);
     
-    // 🔥 FIX: Staggered Parallax Effect for Grid
     const y = useTransform(
         scrollYProgress, 
         [0, 1], 
@@ -163,7 +159,7 @@ const VideoCard = ({ video, index, onClick, scrollYProgress }: any) => {
             </div>
 
             {/* Dark Overlay */}
-            <div className={`absolute inset-0 bg-black/40 transition-opacity duration-700 z-10 pointer-events-none ${isHovered || (isVisible && !isDesktop) ? 'opacity-0' : 'opacity-100'}`} />
+            <div className={`absolute inset-0 bg-black/40 transition-opacity duration-700 z-10 pointer-events-none ${isHovered ? 'opacity-0' : 'opacity-100'}`} />
             
             {/* Holographic Shine */}
             <div className="hidden lg:block">
@@ -192,14 +188,14 @@ const VideoCard = ({ video, index, onClick, scrollYProgress }: any) => {
                 ref={videoRef}
                 src={video.src} 
                 muted loop playsInline
-                preload="metadata" // ⚡ FIX: Preload only metadata to save bandwidth
+                preload="metadata" 
                 className="absolute inset-0 w-full h-full object-cover scale-100 lg:scale-105 lg:group-hover:scale-110 transition-transform duration-[1.5s] ease-out grayscale lg:grayscale group-hover:grayscale-0 opacity-80 lg:opacity-60 group-hover:opacity-100"
             />
         </motion.div>
     );
 };
 
-// --- 2. THE ULTIMATE REEL PLAYER (Mobile Optimized) ---
+// --- 2. THE ULTIMATE REEL PLAYER (Boss Level Mobile Optimized) ---
 const ReelPlayer = ({ video, onClose }: { video: any, onClose: () => void }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -214,13 +210,22 @@ const ReelPlayer = ({ video, onClose }: { video: any, onClose: () => void }) => 
     const [showControls, setShowControls] = useState(true);
     const [showSkip, setShowSkip] = useState<'forward' | 'backward' | null>(null);
 
-    // Timeout ref for controls
     const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Haptic Feedback Helper
+    const vibrate = () => {
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+            navigator.vibrate(50);
+        }
+    };
 
     useEffect(() => {
         setIsDesktop(window.innerWidth > 1024);
 
         document.body.style.overflow = "hidden";
+        // 🔥 FIX: Prevent iOS rubber-banding & scroll bleed
+        document.body.style.touchAction = "none";
+        
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === "Escape") onClose();
             if (e.key === " ") { e.preventDefault(); togglePlay(); }
@@ -230,6 +235,7 @@ const ReelPlayer = ({ video, onClose }: { video: any, onClose: () => void }) => 
         window.addEventListener("keydown", handleKeyDown);
         return () => { 
             document.body.style.overflow = "auto";
+            document.body.style.touchAction = "auto";
             window.removeEventListener("keydown", handleKeyDown);
             if(controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
         };
@@ -240,6 +246,7 @@ const ReelPlayer = ({ video, onClose }: { video: any, onClose: () => void }) => 
             if (isPlaying) videoRef.current.pause();
             else videoRef.current.play();
             setIsPlaying(!isPlaying);
+            vibrate(); // Feedback
         }
     };
 
@@ -248,6 +255,7 @@ const ReelPlayer = ({ video, onClose }: { video: any, onClose: () => void }) => 
             videoRef.current.currentTime += amount;
             setShowSkip(amount > 0 ? 'forward' : 'backward');
             setTimeout(() => setShowSkip(null), 600);
+            vibrate(); // Feedback
         }
     };
 
@@ -286,7 +294,8 @@ const ReelPlayer = ({ video, onClose }: { video: any, onClose: () => void }) => 
     return (
         <motion.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[9999] bg-black/98 flex items-center justify-center"
+            // 🔥 FIX: h-[100dvh] ensures controls are always visible on mobile
+            className="fixed inset-0 z-[9999] bg-black/98 flex items-center justify-center h-[100dvh] w-screen touch-none"
             onClick={onClose}
             onMouseMove={handleMouseMove}
         >
@@ -409,11 +418,9 @@ export default function MotionDesign() {
   const textRef = useRef<HTMLDivElement>(null);
   const [selectedVideo, setSelectedVideo] = useState<any | null>(null);
   
-  // Parallax Setup for Grid Stagger
   const { scrollYProgress } = useScroll({ target: container, offset: ["start end", "end start"] });
 
   useEffect(() => {
-    // ⚡ LAYOUT STABILITY FIX
     const ctx = gsap.context(() => {
         setTimeout(() => {
             ScrollTrigger.refresh();

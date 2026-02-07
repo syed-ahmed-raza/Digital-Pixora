@@ -16,7 +16,7 @@ import {
 import { sendEmail } from "@/actions/email";
 import toast from "react-hot-toast";
 
-// --- CUSTOM PARTS ---
+// --- CUSTOM PARTS (Assuming these exist in your project) ---
 import PixoraBot from "./contact/PixoraBot";
 import SmartInput from "./contact/SmartInput";
 import HoldSubmitBtn from "./contact/HoldSubmitBtn";
@@ -29,7 +29,6 @@ const playSound = (type: "success" | "error" | "click") => {
     if (!AudioContext) return;
     
     const ctx = new AudioContext();
-    // Resume context if suspended (Browser Policy)
     if (ctx.state === 'suspended') ctx.resume();
 
     const osc = ctx.createOscillator();
@@ -52,7 +51,7 @@ const playSound = (type: "success" | "error" | "click") => {
       osc.start(); osc.stop(ctx.currentTime + 0.1);
     }
   } catch (e) {
-    // Silent fail if audio is blocked
+    // Silent fail
   }
 };
 
@@ -168,7 +167,7 @@ export default function Contact() {
     const timer = setInterval(() => {
       setTime(new Date().toLocaleTimeString("en-US", {
         hour: "2-digit", minute: "2-digit", second: "2-digit",
-        timeZone: "Asia/Karachi", // Default to HQ Time
+        timeZone: "Asia/Karachi", // HQ Time
       }));
       setPing((prev) => Math.max(12, Math.min(60, prev + Math.floor(Math.random() * 10) - 5)));
     }, 1000);
@@ -180,15 +179,10 @@ export default function Contact() {
     
     // 🛰️ SATELLITE LOCATION LOGIC
     const establishSatelliteLock = async () => {
-      
       const fallbackToIP = async () => {
           try {
-              const res = await fetch("/api/geo", { 
-                  method: "POST", 
-                  body: JSON.stringify({}) 
-              }); 
+              const res = await fetch("/api/geo", { method: "POST", body: JSON.stringify({}) }); 
               const data = await res.json();
-              
               let city = data.location?.city?.toUpperCase();
               if (!city || city.includes("UNKNOWN") || city.includes("VOID")) {
                   city = "DIGITAL SPACE"; 
@@ -211,25 +205,17 @@ export default function Contact() {
                 }),
               });
               const data = await res.json();
-              
               if (data.location?.city && !data.location.city.includes("UNKNOWN")) {
                   setUserLocation(data.location.city.toUpperCase());
               } else {
                   fallbackToIP(); 
               }
-            } catch (e) {
-              fallbackToIP();
-            }
+            } catch (e) { fallbackToIP(); }
           },
-          async (error) => {
-            console.warn("GPS Denied/Failed:", error.message);
-            fallbackToIP();
-          },
+          (error) => { console.warn(error); fallbackToIP(); },
           { enableHighAccuracy: true, timeout: 8000 }
         );
-      } else {
-          fallbackToIP();
-      }
+      } else { fallbackToIP(); }
     };
 
     establishSatelliteLock();
@@ -315,8 +301,7 @@ export default function Contact() {
     navigator.clipboard.writeText("hellodigitalpixora@gmail.com");
     setCopied(true);
     playSound("click");
-    if (typeof navigator !== "undefined" && navigator.vibrate)
-      navigator.vibrate(50);
+    if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(50);
     showPremiumToast("Encrypted Coordinates Copied", "copy");
     setTimeout(() => setCopied(false), 2000);
   };
@@ -357,9 +342,10 @@ export default function Contact() {
         <div className="grid grid-cols-1 md:grid-cols-12 gap-12 lg:gap-16 items-stretch">
           {/* --- LEFT: INPUT TERMINAL --- */}
           <div className="md:col-span-7 w-full relative">
+            
             {/* 🤖 THE BOT GUARDIAN */}
-            {/* 🔥 FIX: Mobile positioning adjusted to prevent header overlap */}
-            <div className="absolute -top-20 right-0 md:-top-32 md:-right-8 z-30 pointer-events-none">
+            {/* 🔥 FIX: Adjusted mobile top position to prevent overlapping with text */}
+            <div className="absolute -top-16 right-0 md:-top-35 md:-right-8 z-0 md:z-30 pointer-events-none">
               <PixoraBot
                 status={status}
                 mood={mood}
@@ -440,7 +426,9 @@ export default function Contact() {
           </div>
 
           {/* --- RIGHT: BENTO GRID DASHBOARD --- */}
-          <div className="md:col-span-5 flex flex-col gap-4 w-full h-full">
+          {/* 🔥 FIX: h-auto md:h-full ensures right column doesn't stretch weirdly on mobile */}
+          <div className="md:col-span-5 flex flex-col gap-4 w-full h-auto md:h-full">
+            
             {/* 1. HOLOGRAPHIC EMAIL STRIP */}
             <div
               onClick={handleCopyEmail}
@@ -465,18 +453,14 @@ export default function Contact() {
                 <div
                   className={`p-3 rounded-full transition-colors ${copied ? "bg-green-500 text-black" : "bg-white/5 text-white group-hover:bg-[#E50914]"}`}
                 >
-                  {copied ? (
-                    <CheckCircle2 className="w-5 h-5" />
-                  ) : (
-                    <Send className="w-5 h-5" />
-                  )}
+                  {copied ? <CheckCircle2 className="w-5 h-5" /> : <Send className="w-5 h-5" />}
                 </div>
                 <div className="overflow-hidden w-full">
                   <span className="text-[10px] text-white/40 uppercase tracking-widest font-mono block mb-1">
                     Encrypted Uplink
                   </span>
                   <div className="relative w-full overflow-hidden">
-                    <p className="text-lg md:text-xl font-bold text-white whitespace-nowrap group-hover:animate-marquee">
+                    <p className="text-lg md:text-xl font-bold text-white whitespace-nowrap group-hover:animate-marquee truncate">
                       hellodigitalpixora@gmail.com
                     </p>
                   </div>
@@ -485,7 +469,6 @@ export default function Contact() {
             </div>
 
             {/* 2. STATS GRID */}
-            {/* 🔥 FIX: 'min-h-[140px]' added so tiles don't collapse on mobile */}
             <div className="grid grid-cols-2 gap-4 h-full">
               {/* RADAR LOCATION */}
               <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-5 flex flex-col justify-between relative overflow-hidden group hover:border-[#E50914]/30 transition-colors min-h-[140px] md:min-h-auto">

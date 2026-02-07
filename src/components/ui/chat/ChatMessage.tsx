@@ -88,6 +88,7 @@ const ChatMessage = memo(({ role, content }: ChatMessageProps) => {
     if (role === 'assistant' && content.includes('[SCROLL:')) {
       const match = content.match(/\[SCROLL:(.*?)\]/);
       if (match?.[1]) {
+        // 🔥 FIX: Increased timeout to 800ms for reliable mobile scrolling
         setTimeout(() => {
             const targetId = match[1].toLowerCase(); 
             const element = document.getElementById(targetId);
@@ -96,7 +97,7 @@ const ChatMessage = memo(({ role, content }: ChatMessageProps) => {
                 element.classList.add('ring-2', 'ring-[#E50914]', 'ring-offset-4', 'ring-offset-black');
                 setTimeout(() => element.classList.remove('ring-2', 'ring-[#E50914]', 'ring-offset-4', 'ring-offset-black'), 3000);
             }
-        }, 500);
+        }, 800);
       }
     }
   }, [content, role]);
@@ -155,8 +156,8 @@ const ChatMessage = memo(({ role, content }: ChatMessageProps) => {
             animate={{ opacity: 1, scale: 1, rotateX: 0 }}
             whileHover={{ scale: 1.02, rotateX: 5 }}
             transition={{ type: "spring", stiffness: 200, damping: 20 }}
-            // 🔥 Max width constraint for mobile
-            className="my-4 relative overflow-hidden rounded-xl bg-[#080808] border border-white/10 group shadow-2xl w-full max-w-[280px] sm:max-w-[320px]"
+            // 🔥 FIX: 'w-full' ensures it respects parent bubble width on tiny screens
+            className="my-4 relative overflow-hidden rounded-xl bg-[#080808] border border-white/10 group shadow-2xl w-full"
             onMouseEnter={() => playSound('hover')}
           >
               <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 pointer-events-none" />
@@ -227,7 +228,8 @@ const ChatMessage = memo(({ role, content }: ChatMessageProps) => {
   );
 
   const renderPricingCard = () => (
-      <div className="my-4 bg-[#080808] border border-white/10 rounded-xl overflow-hidden w-full group relative shadow-2xl max-w-[280px] sm:max-w-[320px]">
+      // 🔥 FIX: 'w-full' for safety on narrow screens
+      <div className="my-4 bg-[#080808] border border-white/10 rounded-xl overflow-hidden w-full group relative shadow-2xl">
           <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03]" />
           <div className="bg-white/[0.02] px-4 py-3 border-b border-white/5 flex justify-between items-center text-xs font-bold text-white relative z-10">
               <div className="flex items-center gap-2 text-[#E50914] uppercase tracking-widest text-[10px]">

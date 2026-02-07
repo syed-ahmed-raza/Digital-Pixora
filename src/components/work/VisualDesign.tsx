@@ -76,7 +76,8 @@ const VaultCard = ({ item, onClick, index }: { item: any, onClick: () => void, i
                 rotateY, 
                 transformStyle: "preserve-3d" 
             }}
-            className="group relative flex-shrink-0 cursor-pointer snap-center rounded-[2rem] bg-[#0a0a0a] border border-white/5 w-[85vw] sm:w-[60vw] md:w-[35vw] lg:w-[28vw] aspect-[4/5] md:aspect-[3/4] lg:aspect-square overflow-hidden perspective-1000 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] will-change-transform active:scale-[0.98] transition-all"
+            // 🔥 BOSS LEVEL: 'snap-center' locks card in middle on mobile swipe
+            className="group relative flex-shrink-0 cursor-pointer snap-center rounded-[2rem] bg-[#0a0a0a] border border-white/5 w-[85vw] sm:w-[60vw] md:w-[35vw] lg:w-[28vw] aspect-[4/5] md:aspect-[3/4] lg:aspect-square overflow-hidden perspective-1000 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] will-change-transform active:scale-[0.98] transition-all select-none"
         >
             {/* 🌟 1. BACKGROUND GLOW */}
             <div 
@@ -105,7 +106,7 @@ const VaultCard = ({ item, onClick, index }: { item: any, onClick: () => void, i
                                    opacity-80 group-hover:opacity-100 
                                    object-contain drop-shadow-2xl 
                                    grayscale group-hover:grayscale-0 
-                                   group-hover:scale-[1.1] z-10 select-none"
+                                   group-hover:scale-[1.1] z-10 select-none pointer-events-none"
                         style={{ transform: "translateZ(20px)" }} 
                         draggable={false}
                       />
@@ -140,9 +141,13 @@ const AdvancedLightbox = ({ item, onClose }: { item: any, onClose: () => void })
         const handleKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
         window.addEventListener('keydown', handleKeyDown);
         document.body.style.overflow = "hidden";
+        // 🔥 FIX: Prevent scroll bleed on mobile
+        document.body.style.touchAction = "none";
+        
         return () => { 
             window.removeEventListener('keydown', handleKeyDown);
             document.body.style.overflow = "auto";
+            document.body.style.touchAction = "auto";
         };
     }, [onClose]);
 
@@ -155,7 +160,8 @@ const AdvancedLightbox = ({ item, onClose }: { item: any, onClose: () => void })
             animate={{ opacity: 1 }} 
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-[9999] bg-[#050505]/95 backdrop-blur-2xl flex flex-col items-center justify-center overflow-hidden"
+            // 🔥 FIX: z-[999999] ensures it's above everything (Navbar, Cursor) + touch-none for safety
+            className="fixed inset-0 z-[999999] bg-[#050505]/95 backdrop-blur-2xl flex flex-col items-center justify-center overflow-hidden touch-none"
             onClick={onClose}
         >
             {/* Header */}

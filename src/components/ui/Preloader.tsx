@@ -99,8 +99,8 @@ export default function Preloader({ onComplete }: PreloaderProps) {
           variants={slideUp}
           initial="initial"
           exit="exit"
-          // 🔥 FIX: h-[100dvh] ensures it covers full mobile screen (address bar fix)
-          className="fixed inset-0 z-[99999] flex items-center justify-center bg-[#050505] text-white h-screen h-[100dvh] w-full touch-none"
+          // 🔥 FIX: h-[100dvh] ensures it covers full mobile screen (address bar fix) + touch-none
+          className="fixed inset-0 z-[99999] flex items-center justify-center bg-[#050505] text-white h-[100dvh] w-full touch-none"
         >
           {/* --- CONTENT CENTER --- */}
           <div className="relative z-10 flex items-center justify-center px-4 w-full">
@@ -123,7 +123,7 @@ export default function Preloader({ onComplete }: PreloaderProps) {
                 animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
                 exit={{ opacity: 0, y: -15, filter: isMobile ? "blur(0px)" : "blur(10px)" }}
                 transition={{ duration: 0.25, ease: "easeOut" }}
-                className="text-[12vw] sm:text-6xl md:text-7xl font-black mix-blend-difference z-20 tracking-tighter text-center w-full"
+                className="text-[12vw] sm:text-6xl md:text-7xl font-black mix-blend-difference z-20 tracking-tighter text-center w-full leading-none"
               >
                 {words[index]}
                 {index === words.length - 1 && <span className="text-[#E50914]">.</span>}

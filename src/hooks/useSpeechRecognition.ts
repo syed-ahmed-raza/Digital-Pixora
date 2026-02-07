@@ -21,6 +21,7 @@ let audioCtx: AudioContext | null = null;
 const getAudioContext = () => {
     if (typeof window === "undefined") return null;
     if (!audioCtx) {
+        // 🔥 FIX: Added Safari Support
         const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
         if (AudioContext) audioCtx = new AudioContext();
     }
@@ -40,7 +41,7 @@ export const useSpeechRecognition = (): SpeechRecognitionState => {
   const recognitionRef = useRef<any>(null);
   const silenceTimer = useRef<NodeJS.Timeout | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
-  const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null); // 🔒 Added for Cleanup
+  const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null); 
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const wakeLockRef = useRef<any>(null);
@@ -258,7 +259,7 @@ export const useSpeechRecognition = (): SpeechRecognitionState => {
     interimTranscript,
     audioLevel, 
     startListening, 
-    stopListening,
+    stopListening, 
     resetTranscript,
     support
   };

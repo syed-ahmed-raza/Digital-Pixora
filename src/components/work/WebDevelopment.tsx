@@ -160,6 +160,7 @@ export default function WebDevelopment() {
     const mm = gsap.matchMedia();
     
     // --- DESKTOP ANIMATION (STACKING) ---
+    // Only run this elaborate GSAP logic on screens larger than 1024px
     mm.add("(min-width: 1024px)", () => {
         const cards = cardsRef.current;
         if (!cards.length) return;
@@ -237,7 +238,7 @@ export default function WebDevelopment() {
 
       {/* --- MOBILE/TABLET VIEW (SNAP SCROLL) --- */}
       {/* 🛠️ FIX: 'overscroll-x-contain' prevents browser back-swipe on mobile */}
-      {/* 🛠️ FIX: 'scroll-pl-4' ensures first card isn't stuck to edge */}
+      {/* 🛠️ FIX: 'scroll-pl-6' ensures first card isn't stuck to edge */}
       <div className="lg:hidden flex overflow-x-auto snap-x snap-mandatory scroll-pl-6 px-6 pb-12 pt-4 gap-4 w-full items-center min-h-[70vh] no-scrollbar overscroll-x-contain">
         {projects.map((project, i) => (
            <div key={i} className="min-w-[85vw] md:min-w-[60vw] snap-center">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion"; 
 import { Terminal, Palette, Film, Bot, Plus, Activity, ArrowRight } from "lucide-react";
 
@@ -48,6 +48,7 @@ export default function Services() {
   const [activeId, setActiveId] = useState<number>(1); 
   const [isMobile, setIsMobile] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // --- ⚡ SAFE RESIZE LISTENER ---
   useEffect(() => {
@@ -66,7 +67,24 @@ export default function Services() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  if (!mounted) return null; // Prevent Hydration Mismatch
+  // --- 🔥 AUTO-SCROLL LOGIC FOR MOBILE ---
+  const handleCardClick = (id: number) => {
+    setActiveId(id);
+    
+    // Only scroll on mobile to keep focus
+    if (window.innerWidth < 1024) {
+        setTimeout(() => {
+            const element = document.getElementById(`service-card-${id}`);
+            if (element) {
+                const yOffset = -100; // Offset for header
+                const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+                window.scrollTo({ top: y, behavior: 'smooth' });
+            }
+        }, 300); // Delay allows layout animation to start first
+    }
+  };
+
+  if (!mounted) return null; 
 
   return (
     <section id="services" className="relative py-20 md:py-32 px-4 md:px-8 bg-[#050505] overflow-hidden min-h-screen flex flex-col justify-center">
@@ -109,28 +127,29 @@ export default function Services() {
                 return (
                     <motion.div
                         key={service.id}
-                        layout="position" // Smoother layout transitions
-                        onClick={() => setActiveId(service.id)}
+                        id={`service-card-${service.id}`} // Hook for auto-scroll
+                        layout // Enables the smooth resizing
+                        onClick={() => handleCardClick(service.id)}
                         onMouseEnter={() => !isMobile && setActiveId(service.id)}
-                        // 🔥 Snappy Spring Animation
                         transition={{ 
                             layout: { duration: 0.5, type: "spring", stiffness: 120, damping: 20 } 
                         }}
                         className={`
                             relative overflow-hidden rounded-2xl lg:rounded-[2.5rem] border cursor-pointer group 
                             transition-all duration-500
-                            
-                            /* --- FORCE HARDWARE ACCELERATION --- */
                             transform-gpu will-change-[flex-grow]
 
-                            /* --- RESPONSIVE LOGIC --- */
+                            /* --- BOSS LEVEL RESPONSIVE FLEX --- */
                             ${isActive 
                                 ? "flex-[10] lg:flex-[3.5] bg-[#0a0a0a] border-[#E50914] shadow-[0_0_50px_rgba(229,9,20,0.15)]" 
                                 : "flex-[1] lg:flex-[0.5] bg-white/[0.02] border-white/5 hover:border-white/10 hover:bg-white/[0.04]" 
                             }
                             
-                            /* 🛠️ FIX: Mobile Height - Active card takes 60vh for focus */
-                            ${isActive ? "min-h-[60dvh] lg:min-h-auto" : "min-h-[80px] lg:min-h-auto"}
+                            /* 🛠️ FIX: Mobile Height Logic 
+                               - Active: 500px (Enough space for content)
+                               - Inactive: 60px (Compact, just label visible)
+                            */
+                            ${isActive ? "min-h-[500px] lg:min-h-auto" : "min-h-[60px] lg:min-h-auto"}
                         `}
                     >
                         {/* 1. ACTIVE VISUALS (Background) */}
@@ -145,7 +164,7 @@ export default function Services() {
                                 >
                                     {/* Parallax Image Effect */}
                                     <motion.div 
-                                        className="absolute inset-0 bg-cover bg-center grayscale opacity-30 mix-blend-luminosity will-change-transform"
+                                        className="absolute inset-0 bg-cover bg-center grayscale opacity-30 mix-blend-luminosity"
                                         style={{ backgroundImage: `url(${service.image})` }}
                                         animate={{ scale: 1.1 }}
                                         transition={{ duration: 10, ease: "linear" }}
@@ -175,8 +194,10 @@ export default function Services() {
                                             <Activity className="w-3 h-3 text-[#E50914] animate-pulse" />
                                             <span className="text-[10px] uppercase tracking-widest text-white font-bold">Online</span>
                                         </div>
-                                        {/* Number: Huge on desktop, smaller on mobile */}
-                                        <h3 className="text-[50px] md:text-[100px] lg:text-[140px] font-black text-white/[0.03] leading-none absolute top-4 right-4 lg:top-6 lg:right-10 select-none pointer-events-none">
+                                        {/* Number: Responsive Clamp Font */}
+                                        <h3 className="font-black text-white/[0.03] leading-none absolute top-4 right-4 lg:top-6 lg:right-10 select-none pointer-events-none"
+                                            style={{ fontSize: "clamp(60px, 10vw, 140px)" }}
+                                        >
                                             {service.number}
                                         </h3>
                                     </div>
@@ -185,7 +206,10 @@ export default function Services() {
                                         <div className="w-12 h-12 md:w-16 md:h-16 bg-[#E50914] rounded-2xl flex items-center justify-center mb-4 md:mb-8 shadow-[0_10px_30px_rgba(229,9,20,0.3)] group-hover:scale-110 transition-transform duration-500">
                                             {service.icon}
                                         </div>
-                                        <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-black uppercase text-white mb-4 leading-[0.9]">
+                                        {/* Title: Responsive Clamp Font */}
+                                        <h2 className="font-black uppercase text-white mb-4 leading-[0.9]"
+                                            style={{ fontSize: "clamp(2rem, 5vw, 4.5rem)" }}
+                                        >
                                             {service.title}
                                         </h2>
                                         <p className="text-white/70 text-sm md:text-lg max-w-lg font-light leading-relaxed text-pretty mb-6 md:mb-0">
@@ -193,7 +217,7 @@ export default function Services() {
                                         </p>
 
                                         {/* Mobile Only 'Explore' hint */}
-                                        <div className="lg:hidden flex items-center gap-2 text-[#E50914] text-xs font-bold uppercase tracking-widest mt-4">
+                                        <div className="lg:hidden flex items-center gap-2 text-[#E50914] text-xs font-bold uppercase tracking-widest mt-6">
                                             Explore <ArrowRight className="w-4 h-4" />
                                         </div>
                                     </div>

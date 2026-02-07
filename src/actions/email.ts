@@ -4,7 +4,7 @@ import { z } from "zod";
 import { headers } from "next/headers";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
-import { sendAdminNotification, sendWelcomePack } from "@/lib/mail"; 
+import { sendAdminNotification, sendWelcomePack } from "@/lib/mail"; // Ensure this path matches your setup
 
 // --- 1. 🛡️ CONFIGURATION ---
 const redis = (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN)
@@ -22,6 +22,12 @@ const contactFormSchema = z.object({
   email: z.string().trim().email("Please enter a valid email address.").max(100),
   message: z.string().trim().min(10, "Please provide more details (min 10 chars).").max(5000, "Message limit exceeded."),
 });
+
+// Response Type Definition
+type ActionState = {
+    success: boolean;
+    message: string;
+};
 
 // --- 3. 🕵️ INTELLIGENCE GATHERING (Hybrid: Edge + Fallback) ---
 async function getUserContext(ip: string) {
@@ -41,9 +47,10 @@ async function getUserContext(ip: string) {
     }
 
     // 🛡️ LAYER 2: API FALLBACK (Only if Layer 1 fails)
+    // Note: ip-api free tier requires HTTP. HTTPS is paid.
     const res = await fetch(`http://ip-api.com/json/${ip}?fields=city,country,timezone`, { 
         cache: 'no-store',
-        signal: AbortSignal.timeout(1500) 
+        signal: AbortSignal.timeout(1500) // 1.5s Strict Timeout
     });
     
     if (!res.ok) throw new Error("IP Service Unreachable");
@@ -61,9 +68,10 @@ async function getUserContext(ip: string) {
 }
 
 // --- 4. ⚡ MAIN SERVER ACTION ---
-export async function sendEmail(prevState: any, formData: FormData) {
+export async function sendEmail(prevState: ActionState, formData: FormData): Promise<ActionState> {
   try {
-    const ip = (await headers()).get("x-forwarded-for")?.split(',')[0] ?? "127.0.0.1";
+    const headersList = await headers();
+    const ip = headersList.get("x-forwarded-for")?.split(',')[0] ?? "127.0.0.1";
 
     // A. 🛡️ Security Check (Rate Limit)
     if (ratelimit) {
@@ -87,6 +95,7 @@ export async function sendEmail(prevState: any, formData: FormData) {
     }
 
     // D. 🧠 Context Enrichment
+    // We run this parallel to validation to save time, but await it before sending email
     const userCtx = await getUserContext(ip);
 
     // E. 🚀 Execution (Parallel Dispatch)

@@ -20,7 +20,7 @@ let audioCtx: AudioContext | null = null;
 const getAudioContext = () => {
     if (typeof window === "undefined") return null;
     if (!audioCtx) {
-        // 🔥 FIX: Safari support added (webkitAudioContext)
+        // 🔥 FIX: Robust Context Creation
         const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
         if (AudioContext) audioCtx = new AudioContext();
     }
@@ -101,7 +101,7 @@ export const usePixoraChat = () => {
             setNetworkHealth("offline");
             toast.error("Offline. Neural Link Severed.", { style: { background: '#000', color: '#fff', border: '1px solid #E50914' } });
         } else {
-            // 🔥 FIX: Safe check for navigator.connection (Not supported in Firefox/Safari)
+            // 🔥 FIX: Safe check for navigator.connection
             const conn = (navigator as any).connection;
             if (conn) {
                 if (conn.saveData || conn.effectiveType === '2g') setNetworkHealth("poor");
@@ -189,8 +189,9 @@ export const usePixoraChat = () => {
     setStatus("reading");
     setLoadingText("Reading...");
     
-    // Dynamic reading time based on length
-    const readingTime = Math.min(Math.max(600, text.length * 20), 1500); 
+    // Dynamic reading time based on length + network health
+    const baseTime = Math.min(Math.max(600, text.length * 20), 1500); 
+    const readingTime = networkHealth === 'poor' ? baseTime + 500 : baseTime; // Slower on poor net
     await new Promise(resolve => setTimeout(resolve, readingTime));
 
     setStatus("thinking");

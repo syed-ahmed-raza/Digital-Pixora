@@ -316,7 +316,7 @@ const sendWithRetry = async (mailOptions: nodemailer.SendMailOptions, retries = 
 export async function sendWelcomePack(clientEmail: string) {
   const ticketId = `DPX-${Math.random().toString(36).substring(2, 6).toUpperCase()}-PRIORITY`;
   const nameRaw = clientEmail.split('@')[0];
-  const name = nameRaw.charAt(0).toUpperCase() + nameRaw.slice(1).replace(/[0-9._-]/g, ' ');
+  const name = nameRaw ? nameRaw.charAt(0).toUpperCase() + nameRaw.slice(1).replace(/[0-9._-]/g, ' ') : "Visionary";
   const safeName = escapeHtml(name);
 
   console.log(`📨 Dispatching Welcome Pack to: ${clientEmail}`);

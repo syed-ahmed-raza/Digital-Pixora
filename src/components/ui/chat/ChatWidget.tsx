@@ -10,17 +10,15 @@ import {
   Maximize2,
   Cpu,
   Wifi,
-  Sparkles
 } from "lucide-react";
 
 import { usePixoraChat } from "@/hooks/usePixoraChat";
-// Note: Ensure you have this hook or remove the voice parts if not needed
-// Assuming a standard hook structure based on context
+// Ensure this path is correct based on your project structure
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition"; 
 import ChatMessage from "./ChatMessage";
 import ChatInput from "./ChatInput";
 
-// --- 🔊 SONIC UI ENGINE (SINGLETON PATTERN) ---
+// --- 🔊 SONIC UI ENGINE (SINGLETON) ---
 let audioCtx: AudioContext | null = null;
 
 const getAudioContext = () => {
@@ -36,7 +34,6 @@ const playSound = (type: 'open' | 'close' | 'send' | 'hover') => {
   try {
     const ctx = getAudioContext();
     if (!ctx) return;
-    
     if (ctx.state === 'suspended') ctx.resume();
 
     const osc = ctx.createOscillator();
@@ -48,41 +45,23 @@ const playSound = (type: 'open' | 'close' | 'send' | 'hover') => {
     const now = ctx.currentTime;
 
     if (type === 'open') {
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(200, now);
-        osc.frequency.exponentialRampToValueAtTime(600, now + 0.4);
-        gain.gain.setValueAtTime(0, now);
-        gain.gain.linearRampToValueAtTime(0.1, now + 0.1);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
-        osc.start(now);
-        osc.stop(now + 0.4);
+        osc.type = 'sine'; osc.frequency.setValueAtTime(200, now); osc.frequency.exponentialRampToValueAtTime(600, now + 0.4);
+        gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.1, now + 0.1); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+        osc.start(now); osc.stop(now + 0.4);
     } else if (type === 'close') {
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(400, now);
-        osc.frequency.exponentialRampToValueAtTime(100, now + 0.3);
-        gain.gain.setValueAtTime(0.1, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
-        osc.start(now);
-        osc.stop(now + 0.3);
+        osc.type = 'triangle'; osc.frequency.setValueAtTime(400, now); osc.frequency.exponentialRampToValueAtTime(100, now + 0.3);
+        gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+        osc.start(now); osc.stop(now + 0.3);
     } else if (type === 'hover') {
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(800, now);
-        gain.gain.setValueAtTime(0.015, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
-        osc.start(now);
-        osc.stop(now + 0.05);
+        osc.type = 'sine'; osc.frequency.setValueAtTime(800, now);
+        gain.gain.setValueAtTime(0.015, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+        osc.start(now); osc.stop(now + 0.05);
     } else if (type === 'send') {
-        osc.type = 'square';
-        osc.frequency.setValueAtTime(300, now);
-        osc.frequency.exponentialRampToValueAtTime(800, now + 0.1);
-        gain.gain.setValueAtTime(0.05, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
-        osc.start(now);
-        osc.stop(now + 0.1);
+        osc.type = 'square'; osc.frequency.setValueAtTime(300, now); osc.frequency.exponentialRampToValueAtTime(800, now + 0.1);
+        gain.gain.setValueAtTime(0.05, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+        osc.start(now); osc.stop(now + 0.1);
     }
-  } catch(e) {
-      // Silent fail
-  }
+  } catch(e) {}
 };
 
 export default function ChatWidget() {
@@ -98,13 +77,11 @@ export default function ChatWidget() {
     clearChat,
   } = usePixoraChat();
 
-  // If you don't have useSpeechRecognition yet, comment this block out
-  // and remove 'isListening', 'transcript', etc from props below
   const {
     isListening,
     transcript,
     startListening,
-    stopListening, // Ensure your hook exports this
+    stopListening,
     resetTranscript,
     audioLevel,
   } = useSpeechRecognition();
@@ -156,10 +133,18 @@ export default function ChatWidget() {
   useEffect(() => {
     if (isOpen && isMobile) {
       document.body.style.overflow = "hidden";
+      document.body.style.position = "fixed"; // Forces lock on iOS
+      document.body.style.width = "100%";
     } else {
       document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.width = "";
     }
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.width = "";
+    };
   }, [isOpen, isMobile]);
 
   // --- 4. AUTO-SCROLL ---
@@ -194,7 +179,6 @@ export default function ChatWidget() {
 
   return (
     <>
-      {/* GLOBAL STYLES FOR SCROLLBAR & GLASS */}
       <style jsx global>{`
         .titan-scroll::-webkit-scrollbar { width: 4px; }
         .titan-scroll::-webkit-scrollbar-track { background: transparent; }
@@ -208,6 +192,10 @@ export default function ChatWidget() {
             border: 1px solid rgba(255, 255, 255, 0.08);
             box-shadow: 0 20px 80px rgba(0,0,0,0.9);
         }
+
+        /* Notch & Home Bar Safe Areas */
+        .pt-safe { padding-top: env(safe-area-inset-top); }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
 
         @keyframes pulse-ring {
             0% { transform: scale(0.8); opacity: 0.5; }
@@ -225,42 +213,47 @@ export default function ChatWidget() {
       `}</style>
 
       {/* --- WIDGET CONTAINER --- */}
+      {/* Mobile: Full screen fixed. Desktop: Bottom right fixed. */}
       <div className={`fixed z-[9999] flex flex-col items-end pointer-events-none 
-          ${isMobile ? 'bottom-0 right-0 left-0 h-[0px]' : 'bottom-8 right-8'}
+          ${isMobile ? 'inset-0 justify-end' : 'bottom-8 right-8 justify-end'}
       `}>
         <AnimatePresence>
           {isOpen && (
             <motion.div
               layout
-              initial={isMobile ? { opacity: 0, y: "100%" } : { opacity: 0, y: 40, scale: 0.9, filter: "blur(12px)" }}
+              // Mobile Animation: Slide Up. Desktop: Pop & Scale.
+              initial={isMobile ? { y: "100%" } : { opacity: 0, y: 40, scale: 0.9, filter: "blur(12px)" }}
               animate={{ 
                 opacity: 1, 
                 y: 0, 
                 scale: 1,
                 filter: "blur(0px)",
+                // Responsive Dimensions
                 width: isMaximized ? "90vw" : isMobile ? "100%" : "400px",
-                height: isMaximized ? "85vh" : isMobile ? "100dvh" : "650px",
+                height: isMaximized ? "85vh" : isMobile ? "100dvh" : "650px", // 100dvh solves mobile address bar issues
                 borderRadius: isMobile && !isMaximized ? "0px" : "24px",
               }}
-              exit={isMobile ? { opacity: 0, y: "100%" } : { opacity: 0, y: 40, scale: 0.9, filter: "blur(12px)" }}
+              exit={isMobile ? { y: "100%" } : { opacity: 0, y: 40, scale: 0.9, filter: "blur(12px)" }}
               transition={{ type: "spring", stiffness: 320, damping: 32 }}
+              
               // 🔒 SCROLL FIX: StopPropagation to prevent body scroll interaction
               onWheel={(e) => e.stopPropagation()}
-              className="glass-panel flex flex-col overflow-hidden pointer-events-auto relative will-change-transform origin-bottom-right overscroll-contain"
+              
+              className="glass-panel flex flex-col overflow-hidden pointer-events-auto relative will-change-transform origin-bottom-right overscroll-none"
             >
               
               {/* --- 3D GRID & NOISE BACKGROUND --- */}
               <div className="absolute inset-0 z-0 pointer-events-none select-none">
                 <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay" />
                 <div className="absolute inset-0 bg-gradient-to-b from-[#E50914]/5 to-transparent opacity-50" />
-                {/* Cyber Grid */}
                 <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:32px_32px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
               </div>
 
               {/* --- HEADER (HUD STYLE) --- */}
               <div 
-                className={`relative z-20 px-5 py-4 border-b border-white/5 flex justify-between items-center select-none bg-black/20
-                ${isMobile ? 'pt-[calc(env(safe-area-inset-top)+1rem)]' : ''}`}
+                // pt-safe adds padding for iPhone Notch
+                className={`relative z-20 px-5 py-4 border-b border-white/5 flex justify-between items-center select-none bg-black/20 pt-safe
+                ${isMobile ? 'min-h-[80px] items-end pb-4' : ''}`}
                 onDoubleClick={() => !isMobile && setIsMaximized(!isMaximized)}
               >
                 <div className="flex items-center gap-3.5">
@@ -310,12 +303,13 @@ export default function ChatWidget() {
                       {isMaximized ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                     </button>
                   )}
+                  {/* Bigger Close Button for Mobile */}
                   <button
                     onClick={toggleOpen}
                     aria-label="Close Chat"
-                    className="p-2 text-white/20 hover:text-[#E50914] hover:bg-[#E50914]/10 rounded-lg transition-all active:scale-95"
+                    className="p-3 md:p-2 text-white/40 hover:text-[#E50914] hover:bg-[#E50914]/10 rounded-lg transition-all active:scale-95"
                   >
-                    <X className="w-5 h-5" />
+                    <X className="w-6 h-6 md:w-5 md:h-5" />
                   </button>
                 </div>
               </div>
@@ -352,7 +346,7 @@ export default function ChatWidget() {
 
               {/* --- INPUT AREA --- */}
               {/* pb-safe ensures content isn't hidden behind home bar on iPhones */}
-              <div className="relative z-20 pb-safe bg-black/60 backdrop-blur-xl border-t border-white/10">
+              <div className="relative z-20 pb-safe bg-black/60 backdrop-blur-xl border-t border-white/10 shrink-0">
                 <ChatInput
                   onSendMessage={(msg) => { playSound('send'); sendMessage(msg); }}
                   isLoading={status === "thinking" || status === "typing"}
@@ -372,10 +366,11 @@ export default function ChatWidget() {
         <AnimatePresence>
           {!isOpen && (
             <motion.div
-                style={{ x: springX, y: springY }}
+                // Mobile: Fixed Position (No magnet). Desktop: Magnetic Spring.
+                style={!isMobile ? { x: springX, y: springY } : {}}
                 onMouseMove={handleMouseMove}
                 onMouseLeave={handleMouseLeave}
-                className="relative z-[50] pointer-events-auto"
+                className={`relative z-[50] pointer-events-auto ${isMobile ? 'fixed bottom-6 right-6' : ''}`}
             >
                 <motion.button
                 layoutId="trigger"
@@ -385,19 +380,19 @@ export default function ChatWidget() {
                 exit={{ scale: 0, rotate: -90 }}
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
-                onMouseEnter={() => playSound('hover')}
+                onMouseEnter={() => !isMobile && playSound('hover')}
                 onClick={toggleOpen}
                 className={`
                     pulse-ring group relative flex items-center justify-center bg-[#050505] border border-white/10 
                     shadow-[0_0_50px_rgba(229,9,20,0.6)] z-[50] overflow-hidden backdrop-blur-xl cursor-pointer
-                    ${isMobile ? 'w-14 h-14 rounded-full m-5' : 'w-16 h-16 rounded-2xl m-8'}
+                    w-14 h-14 md:w-16 md:h-16 rounded-2xl
                 `}
                 >
                 <div className="absolute inset-0 bg-gradient-to-tr from-[#E50914]/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500" />
                 <div className="absolute -inset-full bg-gradient-to-r from-transparent via-white/10 to-transparent rotate-45 group-hover:animate-[shine_1.5s_infinite]" />
                 
                 <div className="relative z-10 text-white group-hover:text-[#E50914] transition-colors duration-300">
-                    <MessageSquare className={isMobile ? "w-6 h-6" : "w-7 h-7"} strokeWidth={1.5} />
+                    <MessageSquare className="w-7 h-7" strokeWidth={1.5} />
                 </div>
                 
                 {/* Notification Badge */}

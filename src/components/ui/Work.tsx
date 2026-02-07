@@ -5,30 +5,37 @@ import dynamic from "next/dynamic";
 // ✅ GREAT MOVE: First section DIRECT import for perfect Sticky Calculation
 import WebDevelopment from "@/components/work/WebDevelopment";
 
+// --- REUSABLE LOADING SKELETON (Premium Feel) ---
+const SectionLoader = () => (
+  <div className="min-h-screen w-full bg-[#050505] flex items-center justify-center">
+    <div className="w-full h-full animate-pulse opacity-10 bg-white/5" />
+  </div>
+);
+
 // --- LAZY LOAD REST (Performance Optimization) ---
-// Loading state mein 'min-h-screen' rakha hai taake layout shift na ho
 const VisualDesign = dynamic(() => import("@/components/work/VisualDesign"), { 
   ssr: true,
-  loading: () => <div className="min-h-screen w-full bg-[#050505]" /> 
+  loading: () => <SectionLoader /> 
 });
 
 const MotionDesign = dynamic(() => import("@/components/work/MotionDesign"), { 
   ssr: true,
-  loading: () => <div className="min-h-screen w-full bg-[#050505]" />
+  loading: () => <SectionLoader />
 });
 
 const AiEngineering = dynamic(() => import("@/components/work/AiEngineering"), { 
   ssr: true,
-  loading: () => <div className="min-h-screen w-full bg-[#050505]" />
+  loading: () => <SectionLoader />
 });
 
 export default function Work() {
   return (
-    // 🔥 FIX: 'overflow-visible' is crucial for Sticky Cards.
-    // 'max-w-[100vw]' ensures no horizontal scrolling on mobile if animations fly out.
+    // 🔥 BOSS LEVEL FIX: 
+    // 1. 'overflow-x-clip' (or hidden) prevents horizontal scrollbars from flying animations
+    // 2. 'overflow-y-visible' allows Sticky Position to work perfectly
     <section 
         id="work" 
-        className="relative w-full max-w-[100vw] z-10 overflow-visible bg-[#050505]"
+        className="relative w-full max-w-full z-10 bg-[#050505] overflow-x-hidden overflow-y-visible"
     >
       
       {/* 1. WEB DEV (Sticky Stack - Loaded Instantly) */}
