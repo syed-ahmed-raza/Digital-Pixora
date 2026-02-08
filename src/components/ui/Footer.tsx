@@ -10,7 +10,7 @@ import {
   useVelocity, 
   useAnimationFrame 
 } from "framer-motion";
-import { ArrowUp, ArrowUpRight, Instagram, Linkedin, Twitter, Radio, Clock, Command } from "lucide-react";
+import { ArrowUp, ArrowUpRight, Instagram, Linkedin, Twitter, Radio, Clock, Command, Facebook } from "lucide-react";
 
 // ✅ IMPORT COMMAND MENU (Assuming you have this component)
 import CommandMenu from "@/components/ui/CommandMenu";
@@ -250,8 +250,10 @@ export default function Footer() {
                   
                   <div className="flex gap-4 mt-8 md:mt-0">
                       <MagneticSocial href="https://www.instagram.com/digitalpixora"><Instagram className="w-5 h-5" /></MagneticSocial>
+                      <MagneticSocial href="https://www.facebook.com/profile.php?id=61583781300680"><Facebook className="w-5 h-5" /></MagneticSocial>
                       <MagneticSocial href="https://www.linkedin.com/in/digital-pixora-623736398"><Linkedin className="w-5 h-5" /></MagneticSocial>
-                      <MagneticSocial href="https://www.facebook.com/profile.php?id=61583781300680"><Twitter className="w-5 h-5" /></MagneticSocial>
+                      <MagneticSocial href="https://x.com/DigitalPixoraHQ"><Twitter className="w-5 h-5" /></MagneticSocial>
+
                   </div>
               </div>
           </div>
