@@ -249,9 +249,9 @@ export default function Footer() {
                   </div>
                   
                   <div className="flex gap-4 mt-8 md:mt-0">
-                      <MagneticSocial href="#"><Instagram className="w-5 h-5" /></MagneticSocial>
-                      <MagneticSocial href="#"><Linkedin className="w-5 h-5" /></MagneticSocial>
-                      <MagneticSocial href="#"><Twitter className="w-5 h-5" /></MagneticSocial>
+                      <MagneticSocial href="https://www.instagram.com/digitalpixora"><Instagram className="w-5 h-5" /></MagneticSocial>
+                      <MagneticSocial href="https://www.linkedin.com/in/digital-pixora-623736398"><Linkedin className="w-5 h-5" /></MagneticSocial>
+                      <MagneticSocial href="https://www.facebook.com/profile.php?id=61583781300680"><Twitter className="w-5 h-5" /></MagneticSocial>
                   </div>
               </div>
           </div>
